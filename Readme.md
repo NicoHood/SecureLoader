@@ -4,29 +4,37 @@ The idea is to create an USB bootloader that can easily upgrade an AVR firmware
 without lowering the security of the device. This paper describes use cases,
 potential attacks and solutions to prevent them.
 
+This readme describes a **concept** with some ideas. It is **not final**.
+Contributions appreciated.
+
 ## Bootloader overview
 
 ### Bootloader use case
- * Uploading a self trusted/recompiled firmware
+ * Uploading a more trusted/self recompiled firmware
  * Security updates
  * Feature updates
- * Developing new firmware
+ * Developing new firmware features
 
 ### Bootloader aims
  * Protect against malicious firmware upgrades
- * Security
+ * Security checksums of firmware and bootloader
  * Small size
  * Flexibility and compatibility through HID
  * Open Source
 
 ### Assumptions
-  * Without opening the device you cannot modify the bootloader
-  * We consider the bootloader secure then
+ * Without opening the device you cannot modify the bootloader
+ * We consider the bootloader integrity secure then
 
 ### User interface requirements
  * Accessible from a browser Addin (USB HID)
  * A command line tool would also be very important for debugging
  * Bootloader cannot be updated later, so it needs to be of high quality
+ * The bootloader execution should not rely on the (possibly broken) firmware
+ * [Simple bootloader execution mechanism](https://github.com/NicoHood/HoodLoader2/wiki/How-to-use-reset)
+ * Or connect HWB to a hardware button (pulled HIGH) and start bootloader
+   if this button is pressed when plugged in at startup
+ * Verifying a firmware should be possible at any time
 
 ### Implementation requirements
  * Only available for AVR, developed for 32u4
@@ -34,9 +42,12 @@ potential attacks and solutions to prevent them.
  * Small size in flash (2kb would be nice)
  * Locking the bootloader after each firmware upgrade increases security
  * The bootloader could keep track of the number of upgrades (check buffer overflow!)
+ * Verify the bootloader checksum before starting
  * Verify the firmware checksum before running it
  * Verify the fuse settings as well
+ * Use proper lock bits
  * Add an user interface to download the firmware again
+ * The bootloader should not leave any trace in EEPROM or RAM
  * Ensure the firmware cannot modify the bootloader. -> but if we have a malicious firmware, didnt we already fail in out task?
 
 ### Other ideas:
@@ -44,10 +55,18 @@ potential attacks and solutions to prevent them.
  * Read up on DFU lock bits to preserve firmware reading?
 
 ### Links
+
+#### Security aspects
  * http://wiki.hacdc.org/index.php/Secure_bootloader
  * http://hackaday.com/2014/07/05/overwriting-a-protected-avr-bootloader/
  * https://media.ccc.de/v/32c3-7189-key-logger_video_mouse
  * http://jtxp.org/tech/tinysafeboot_en.htm
+
+#### AVR Bootloaders
+ * http://www.nongnu.org/avr-libc/user-manual/group__avr__boot.html
+ * http://www.avrfreaks.net/forum/faq-c-writing-bootloader-faq?page=all
+ * https://www.mikrocontroller.net/articles/AVR_Bootloader_in_C_-_eine_einfache_Anleitung
+
 
 ## Attack scenarios
  * A compromised PC uploads a malicious firmware
@@ -105,9 +124,10 @@ TODO add a separate section for not used ideas, to show the cons when we finishe
  * The initial unlock code should not rely on the seller and be changed after first boot
  * Code should be different to smartcard pin
  * It is important that a brute forcing the unlock is impossible
+ * Bootloader can be unlocked from the PC via HID (and does not rely on the firmware to unlock)
 
 #### Unsolved attack scenarios
  * Initial firmware of the device should not be considered trusted, if NSA opens the post package
- -> Sending the inital password AFTER receiving? -> you rely on the seller and production again
+ -> Sending the initial password AFTER receiving? -> you rely on the seller and production again
  -> paranoid people should upload new firmware
   * Ensure the firmware cannot modify the bootloader. Bootloader should be considered trusted was the concept. (because of the reason above)
