@@ -1,12 +1,5 @@
 # SecureLoader
 
-The idea is to create an USB bootloader that can easily upgrade an AVR firmware
-with even increasing the security of the device. This paper describes use cases,
-potential attacks and solutions to prevent them.
-
-This readme describes a **temporary concept** with some ideas. It is **not final**.
-Contributions appreciated.
-
 ## Bootloader overview
 
 ### Bootloader use case
