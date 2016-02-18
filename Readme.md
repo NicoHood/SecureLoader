@@ -61,11 +61,12 @@ Advantages:
   1. Force to set a bootloader key via USB HID
   2. Reboot via watchdog reset
 3. Recovery mode entered (press special hardware keys at startup)
-  1. Authenticate the bootloader to the PC (via bootloader key) TODO LINK
+  1. [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc) TODO LINK
   2. Provide an option to verify the firmwares integrity (checksum) if the PC requests it TODO link
   3. Authenticate the PC to the bootloader (via bootloader key)
     1. Provide an option to flash new firmware TODO link
-    2. Provide an option to change the bootloader key from the firmware TODO link
+    2. Provide an option to change the bootloader key from the bootloader
+    3. Provide an option to change the bootloader key from the firmware TODO link
   4. Reboot via watchdog reset
 4. Recovery mode not entered (just plug in the device)
   1. Write the firmware identifier into a special ram position
@@ -119,7 +120,7 @@ A random challenge is used instead of a signed firmware
 to prevent firmware downgrades with a known firmware hash.
 It also makes the code faster and more simple.
 
-#### Change the bootloader key
+#### Change the bootloader key from the bootloader
 You need to change the bootloader key from the bootloader if no one was set yet.
 Also you might want to change it for security purposes or as initial bootloader key.
 You can also force to change the bootloader key the next time you want to flash a firmware.
