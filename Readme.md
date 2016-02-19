@@ -113,19 +113,21 @@ With the same symmetric BK the PC answers a challenge from the bootloader.
 TODO on wrong authentication set some flag, that the firmware can read next time
 TODO a good random challenge is required here
 
-#### Flash new firmware
+#### Firmware upgrade
 It is very important to **only upload trusted firmware** from an untrusted PC
 while still keeping the **ability to create custom firmwares** and dont lock out firmware developers.
 
 The firmware upgrade only accepts signed firmware by the bootloader key.
-This way the vendor can provide firmware upgrades without leaking the secret bootloader key.
+Signing the firmware authenticates the firmware (rather than the PC) to the bootloader.
 This means you can create new firmwares from a trusted PC and do **firmware upgrades from an untrusted PC**.
-To prevent replay attacks (firmware downgrades) the bootloader key should be changed after each upload.
+The vendor can provide firmware upgrades without leaking the secret bootloader key.
 
 However the vendor still can (and should) give away the inital bootloader key to the user if it requests it.
 Then the user can **compile and sign his own firmwares** and play with the device.
-After exchanging the initial bootloader key to the user it should be changed.
 Then the user is responsible for further firmware upgrades.
+
+To prevent replay attacks (firmware downgrades) the bootloader key should be changed after each upload.
+After exchanging the initial bootloader key from the vendor to the user it should be changed too.
 
 ##### Firmware upgrade sequence
 1. Receive signed firmware checksums from the PC
@@ -133,7 +135,7 @@ Then the user is responsible for further firmware upgrades.
 3. Receive next firmware page from the PC and verify the page checksum
 4. Abort if the checksum is invalid
 5. Flash the valid page
-6. Veryfy the whole firmware checksum
+6. Verify the whole firmware checksum
 7. Abort and delete the whole firmware if the checksum is invalid
 8. Write new firmware identifier and new firmware counter
 
