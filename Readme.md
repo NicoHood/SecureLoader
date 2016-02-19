@@ -65,17 +65,15 @@ Advantages:
 ### Bootloader Mode/Device Start TODO name
 0. Device startup, always run the bootloader (BOOTRST=0)
 1. POST: Check the bootloader and firmware integrity (checksum) at startup
-2. Special case if no boot key was set/removed (after ISP the bootloader or removing the BK)
+2. Special case if no boot key was set/removed (after ISP the bootloader)
   1. Force to set a bootloader key via USB HID
   2. Reboot via watchdog reset
 3. Recovery mode entered (press special hardware keys at startup)
-  1. [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc)
-  2. Provide an option to verify the firmwares integrity (checksum) if the PC requests it TODO link
-  3. [Authenticate the PC to the bootloader (via bootloader key)](#authenticate-the-pc-to-the-bootloader)
-    1. Provide an option to flash new firmware TODO link
-    2. Provide an option to change the bootloader key from the bootloader
-    3. Provide an option to change the bootloader key from the firmware TODO link
-  4. Reboot via watchdog reset
+  * Verify the firmwares checksum if the PC requests it TODO link
+  * Flash a new signed firmware
+  * Change the bootloader key with a signed and encrypted new password
+  * [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc)
+  * Reboot via watchdog reset
 4. Recovery mode not entered (just plug in the device)
   1. Write the firmware identifier into a special ram position
   2. Start the firmware
@@ -97,6 +95,10 @@ Typically the last bootloader flash page is used to store the bootloader setting
 
 ### Bootloader key (BK)
 
+TODO length
+TODO encryption algorithm
+TODO stored in sbs
+
 #### Authenticate the bootloader to the PC
 The Bootloader key is used to **authenticate the bootloader to the PC**.
 The PC sends a random challenge to the bootloader which it has to hash with the BK.
@@ -105,29 +107,46 @@ TODO a long timeout/password is required here to not brute force all combination
 
 #### Authenticate the PC to the bootloader
 It also prevents attackers from uploading new firmwares to the device.
-Before the PC can upload a firmware the **PC has to authenticate itself to the bootloader***.
+Before the PC can upload a firmware the **PC has to authenticate itself to the bootloader**.
 With the same symmetric BK the PC answers a challenge from the bootloader.
 
 TODO on wrong authentication set some flag, that the firmware can read next time
 TODO a good random challenge is required here
 
 #### Flash new firmware
-The new firmware then can be uploaded to the MCU after you have authenticated from the PC.
+It is very important to **only upload trusted firmware** from an untrusted PC
+while still keeping the **ability to create custom firmwares** and dont lock out firmware developers.
 
-TODO oeder/visualize this corrrect with numbers
-* Delete firmware identifier
-* Increase firmware counter
-* Write firmware
-* Verify the firmware checksum
-* Firmware is written successful
-* Write new random firmware identifier with new firmware counter
-* Firmware is corrupted/checksum incorrect
-* Write only the new firmware counter
-* Send an error to the PC
+The firmware upgrade only accepts signed firmware by the bootloader key.
+This way the vendor can provide firmware upgrades without leaking the secret bootloader key.
+This means you can create new firmwares from a trusted PC and do **firmware upgrades from an untrusted PC**.
+To prevent replay attacks (firmware downgrades) the bootloader key should be changed after each upload.
 
-A random challenge is used instead of a signed firmware
-to prevent firmware downgrades with a known firmware hash.
-It also makes the code faster and more simple.
+However the vendor still can (and should) give away the inital bootloader key to the user if it requests it.
+Then the user can **compile and sign his own firmwares** and play with the device.
+After exchanging the initial bootloader key to the user it should be changed.
+Then the user is responsible for further firmware upgrades.
+
+The firmware upgrade works like this:
+1. Receive signed firmware checksums from the PC
+2. Verify the authentic of the firmware checksums
+3. Receive next firmware page from the PC and verify the page checksum
+4. Abort if the checksum is invalid
+5. Flash the valid page
+6. Veryfy the whole firmware checksum
+7. Abort and delete the whole firmware if the checksum is invalid
+8. Write new firmware identifier and new firmware counter
+
+The signed firmware checksums consists of:
+* A checksum for each firmware page
+* A checksum of the whole firmware
+* A signature of the checksums, signed with the bootloader key
+
+If one checksum is valid all other checksums should be valid too.
+Otherwise there was an error while creating the checksums or the signing algorithm is insecure.
+
+If the uploading failed a flag will be set to let the firmware notice the upload violation.
+TODO how to remove this flag, only authorized peole should be able to?
 
 #### Change the bootloader key from the bootloader
 You need to change the bootloader key from the bootloader if no one was set yet.
@@ -136,14 +155,14 @@ You can also force to change the bootloader key the next time you want to flash 
 This is useful when setting an initial vendor bootloader key.
 
 #### Remove bootloader key / Change bootloader key from the firmware
-If the PC is not trusted, you want to change the bootloader key from the firmware.
+~~If the PC is not trusted, you want to change the bootloader key from the firmware.
 Therefor you can remove the key after you have authenticated from the PC.
-The firmware will be directly booted and you need to change the bootloader key.
+The firmware will be directly booted and you need to change the bootloader key.~~
 
-The firmware gets a special flag via RAM to notice a not set bootloader key.
+~~The firmware gets a special flag via RAM to notice a not set bootloader key.
 The firmware is only allowed to change the bootloader key if it was not set.
 If you do not set the bootloader key, the bootloader requires you to set it next time via PC.
-Therefor it is **highly recommended to only use this feature if its essentially required**.
+Therefor it is **highly recommended to only use this feature if its essentially required**.~~
 
 #### Initial bootkey
 A **unique BK is initially set by the vendor** and exchanged after receiving the device.
