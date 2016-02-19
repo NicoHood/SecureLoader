@@ -65,7 +65,7 @@ Advantages:
 ### Bootloader Mode/Device Start TODO name
 0. Device startup, always run the bootloader (BOOTRST=0)
 1. POST: Check the bootloader and firmware integrity (checksum) at startup
-2. Special case if no boot key was set/removed (after ISP the bootloader)
+2. Special case if no boot key was set (after ISP the bootloader)
   1. Force to set a bootloader key via USB HID
   2. Reboot via watchdog reset
 3. Recovery mode entered (press special hardware keys at startup)
@@ -99,21 +99,53 @@ TODO length
 TODO encryption algorithm
 TODO stored in sbs
 
+used for:
+firmware authentification when doing fw upgrade
+Authenticate the bootloader to the PC
+
+The BK needs to be kept **highly secure** and should be changed be changed after exchanging.
+
+#### Change the bootloader key
+You need to change the bootloader key from the bootloader if no one was set yet.
+Also you might want to change it for security purposes or add an initial bootloader key.
+This is useful when setting an initial vendor bootloader key.
+
+#### No bootloader key was set
+Only after burning the bootloader via ISP no bootloader key was set.
+If no bootkey was set at startup you need to set a bootloader key from the bootloader via USB HID.
+It is intended that it is **not possbile to upload a firmware until a bootloader key was set**.
+It is not possible to remove a bootloader key afterwards.
+**Never ship a device without an inital vendor bootloader key.** TODO link
+
+#### Initial bootloader key
+A **unique BK is initially set by the vendor** and can be exchanged **after receiving the device**.
+This ensures the **integrity of the initial bootloader** that is stored inside the SBS.
+The initial bootloader key can be used to provide firmware upgrades without leaking the BK.
+
 #### Authenticate the bootloader to the PC
 The Bootloader key is used to **authenticate the bootloader to the PC**.
 The PC sends a random challenge to the bootloader which it has to hash with the BK.
 The bootloaders integrity is then ensured, the bootloader can be trusted.
 TODO a long timeout/password is required here to not brute force all combinations
 
+TODO is this essential? discuss with other people
+* pro: This can be used to verify the bootloaders integrity after receiving the device.
+* contra: optionally this could be done (once) via the flashed firmware
+* pro: you can verify the bootloader before each uploading(send the expected response with the challenge)
+* contra: a compromised pc could always say the bootloader is okay
+* pro: you can use it to let the BK owner verify the bootloader (send the response back to the vendor)
+* contra: it is not simple and a compromised pc could fake the email back.
+
 #### Authenticate the PC to the bootloader
-It also prevents attackers from uploading new firmwares to the device.
+~~It also prevents attackers from uploading new firmwares to the device.
 Before the PC can upload a firmware the **PC has to authenticate itself to the bootloader**.
 With the same symmetric BK the PC answers a challenge from the bootloader.
 
 TODO on wrong authentication set some flag, that the firmware can read next time
-TODO a good random challenge is required here
+TODO a good random challenge is required here~~
 
-#### Firmware upgrade
+
+### Firmware upgrade
 It is very important to **only upload trusted firmware** from an untrusted PC
 while still keeping the **ability to create custom firmwares** and dont lock out firmware developers.
 
@@ -131,7 +163,7 @@ After exchanging the initial bootloader key from the vendor to the user it shoul
 
 ##### Firmware upgrade sequence
 1. Receive signed firmware checksums from the PC
-2. Verify the authentic of the firmware checksums
+2. Verify the authenticity of the firmware checksums
 3. Receive next firmware page from the PC and verify the page checksum
 4. Abort if the checksum is invalid
 5. Flash the valid page
@@ -150,43 +182,13 @@ If the uploading failed a flag will be set to let the firmware notice the upload
 
 TODO how to remove this flag, only authorized peole should be able to?
 
-#### Change the bootloader key from the bootloader
-You need to change the bootloader key from the bootloader if no one was set yet.
-Also you might want to change it for security purposes or as initial bootloader key.
-You can also force to change the bootloader key the next time you want to flash a firmware.
-This is useful when setting an initial vendor bootloader key.
-
-#### Remove bootloader key / Change bootloader key from the firmware
-~~If the PC is not trusted, you want to change the bootloader key from the firmware.
-Therefor you can remove the key after you have authenticated from the PC.
-The firmware will be directly booted and you need to change the bootloader key.~~
-
-~~The firmware gets a special flag via RAM to notice a not set bootloader key.
-The firmware is only allowed to change the bootloader key if it was not set.
-If you do not set the bootloader key, the bootloader requires you to set it next time via PC.
-Therefor it is **highly recommended to only use this feature if its essentially required**.~~
-
-#### Initial bootkey
-A **unique BK is initially set by the vendor** and exchanged after receiving the device.
-This ensures the **integrity of the initial bootloader** and is stored inside the SBS.
-The BK needs to be kept **highly secure** and changed after the first authentication.
-
-#### No bootloader key was set
-Situation where it can happen that no bootloader key was set:
-* The bootloader was just burned via ISP
-* The bootloader key from the firmware was not successful TODO link
-
-If no bootkey was set at startup you need to do it from the bootloader via USB HID.
-It is intended that the firmware will not be loaded until a bootloader key is set.
-This feature is essential to ensure security and give a clear warning.
-**Never ship a device without an inital vendor ID.** TODO link
+### Power on self test (POST)
+The bootloader checks the bootloader and firmware checksum at every boot to **prevent flash corruption**.
 
 ### Firmware Checksum (FW Checksum)
-The Firmware Checksum is generated after uploading a new firmware by the bootloader.
-The bootloader checks the FW checksum at every boot to **prevent flash corruption**.
-It stores the FW checksum in the secure bootloader section.
+The Firmware Checksum is generated after uploading a new firmware by the bootloader and stored in the SBS.
 The PC can **verify the Firmware Integrity** with the Firmware Checksum and the Firmware Counter.
-The FW Hash is also used as part of the FID.
+The Firmware checksum is used as part of the POST and the FID.
 
 TODO hash algorithm: crc32?
 
