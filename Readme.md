@@ -127,7 +127,7 @@ Then the user can **compile and sign his own firmwares** and play with the devic
 After exchanging the initial bootloader key to the user it should be changed.
 Then the user is responsible for further firmware upgrades.
 
-The firmware upgrade works like this:
+##### Firmware upgrade sequence
 1. Receive signed firmware checksums from the PC
 2. Verify the authentic of the firmware checksums
 3. Receive next firmware page from the PC and verify the page checksum
@@ -137,15 +137,15 @@ The firmware upgrade works like this:
 7. Abort and delete the whole firmware if the checksum is invalid
 8. Write new firmware identifier and new firmware counter
 
-The signed firmware checksums consists of:
+##### Signed firmware checksums content
 * A checksum for each firmware page
 * A checksum of the whole firmware
 * A signature of the checksums, signed with the bootloader key
 
 If one checksum is valid all other checksums should be valid too.
 Otherwise there was an error while creating the checksums or the signing algorithm is insecure.
-
 If the uploading failed a flag will be set to let the firmware notice the upload violation.
+
 TODO how to remove this flag, only authorized peole should be able to?
 
 #### Change the bootloader key from the bootloader
