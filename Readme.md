@@ -219,9 +219,30 @@ The Firmware ID Hash consists of the FID and a (per firmware user) nonce.
 This way the nonce can be changed at any time if an unauthorized people sees the FID Hash.
 The firmware will display the FID Hash and the **user needs to verify it**.
 
+### Fuse Settings
 
+ATmega32u4 fuse settings:
+* Low: 0xFF
+* High: 0xD8
+* Extended: 0xF8
+* Lock: 0x??
 
+**TODO check lock bits**
 
+- Ext. Crystal Osc.; Frequency 8.0- MHz; Start-up time: 16K CK + 65 ms; [CKSEL=1111 SUT=11]
+- [ ] Clock output on PORTC7; [CKOUT=0]
+- [ ] Divide clock by 8 internally; [CKDIV8=0]
+- [x] Boot Reset vector Enabled (default address=$0000); [BOOTRST=0]
+- Boot Flash size=2048 words start address=$3800; [BOOTSZ=00]
+- [ ] Preserve EEPROM memory through the Chip Erase cycle; [EESAVE=0]
+- [ ] Watchdog timer always on; [WDTON=0]
+- [x] Serial program downloading (SPI) enabled; [SPIEN=0]
+- [ ] JTAG Interface Enabled; [JTAGEN=0]
+- [ ] On-Chip Debug Enabled; [OCDEN=0]
+- Brown-out detection level at VCC=4.3V; [BODLEVEL=000]
+- [ ] Hardware Boot Enable; [HWBE=0]
+
+See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more information.
 
 ### Other implementation details:
  * All secret keys needs to be saved in the bootloader section
