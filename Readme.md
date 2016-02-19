@@ -53,14 +53,10 @@ Advantages:
 
 ### Assumptions
 * The attacker has full physical access of the device.
-* The device can be opened an an ISP can be used without a visible change.
+* The device can be opened and an ISP can be used without a visible change.
 * The attacker is able to steal the device and put it back at any time.
-* The initial vendor password is kept secure until the device has arrived.
+* The initial password is kept secure by the vendor until the user requests it.
 * The AVR is programmed with the correct fuses.
-* The bootloader password is kept secure. (Still got firmware integrity check)
-* A PC virus could upload a malicious firmware (button press, checksum and firmware integrity check)
-* **The firmware cannot hack the bootloader (Still got firmware integrity check). TODO**
-* The user (or the flashing tool) is responsible for not uploading malicious firmware.
 
 ### Bootloader Mode/Device Start TODO name
 0. Device startup, always run the bootloader (BOOTRST=0)
@@ -70,7 +66,7 @@ Advantages:
   2. Reboot via watchdog reset
 3. Recovery mode entered (press special hardware keys at startup)
   * Verify the firmwares checksum if the PC requests it TODO link
-  * Flash a new signed firmware
+  * Do a [firmware upgrade](#firmware-upgrade)
   * Change the bootloader key with a signed and encrypted new password
   * [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc)
   * Reboot via watchdog reset
@@ -78,6 +74,14 @@ Advantages:
   1. Write the firmware identifier into a special ram position
   2. Start the firmware
   3. The user needs to authenticate the firmware TODO link
+
+
+### Reboot Mechanism
+TODO magic bootkey in RAMEND (16 bit)
+Use a single bit instead?
+TODO dont allow to start the bootloader via firmware for security?
+~~use hwb instead of bootrst~~ -> POST
+Use the other bits for FID and firmware upgrade violation? but how to reset the flag and let the (all!) user know?
 
 ### Secure bootloader section (SBS)
 The bootloader has to store a few settings in the protected bootloader flash section:
@@ -123,6 +127,9 @@ This ensures the **integrity of the initial bootloader** that is stored inside t
 The initial bootloader key can be used to provide firmware upgrades without leaking the BK.
 
 #### Authenticate the bootloader to the PC
+
+**Discussion: is this feature essential?**
+
 The Bootloader key is used to **authenticate the bootloader to the PC**.
 The PC sends a random challenge to the bootloader which it has to hash with the BK.
 The bootloaders integrity is then ensured, the bootloader can be trusted.
@@ -135,6 +142,16 @@ TODO is this essential? discuss with other people
 * contra: a compromised pc could always say the bootloader is okay
 * pro: you can use it to let the BK owner verify the bootloader (send the response back to the vendor)
 * contra: it is not simple and a compromised pc could fake the email back.
+
+you (vendor) send the user a firmware, a firmware hash, a new encrypted password, 2 authentification challenges and 1 expected challenge answer.
+
+  the flashing tool sends the 2 challenges and the bootloader has to answer both. with the 1st you can trust the bootloader if you trust your pc. with the 2nd you can send the answer to the vendor and he can verify this challenge as well.
+
+Other option via UID (one time only)
+1) enter uid request code in the app, press enter
+2) check the returned code is the good one
+3) add mooltipass user
+4) remember hash
 
 #### Authenticate the PC to the bootloader
 ~~It also prevents attackers from uploading new firmwares to the device.
@@ -180,7 +197,7 @@ If one checksum is valid all other checksums should be valid too.
 Otherwise there was an error while creating the checksums or the signing algorithm is insecure.
 If the uploading failed a flag will be set to let the firmware notice the upload violation.
 
-TODO how to remove this flag, only authorized peole should be able to?
+TODO how to remove this flag, only authorized people should be able to?
 
 ### Power on self test (POST)
 The bootloader checks the bootloader and firmware checksum at every boot to **prevent flash corruption**.
@@ -253,6 +270,60 @@ See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more informati
  * Add an user interface to download the firmware again
  * TODO MAYBE let the bootloader key be changed (set a flag ONCE for a single boot) from the user firmware for more security.
  * pass the FID via ram and also anothe byte to identify wrong bootloader attacks, BK forced changed and future use things.
+
+### Attacks TODO rename to "protection" caption
+ * The bootloader password is kept secure. (Still got firmware integrity check)
+ * A PC virus could upload a malicious firmware (button press, checksum and firmware integrity check)
+ * **The firmware cannot hack the bootloader (Still got firmware integrity check). TODO**
+ * The user (or the flashing tool) is responsible for not uploading malicious firmware.
+
+
+
+
+## Provided guarantees
+
+### Flash corruption protection
+* Brown out detection
+* Secure bootloader section
+* Power on self test
+
+TODO links
+
+### Flashing unauthorized firmware protection
+Only signed firmwares can be flashed with the bootloader.
+You can even flash the device from a not trusted PC.
+
+The bootloader key to sign the firmware needs to be kept secure.
+This can be handled by the vendor or the user.
+
+Flashing a new firmware will also change the firmware ID Hash (TODO link).
+The user is able notice a firmware change, even with an ISP.
+
+### Hacking the bootloader from the firmware protection
+**TODO this needs to be checked and carefully coded.**
+
+Even if a firmware vulnerability was found you can hardly hack the bootloader.
+AVR use [harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture),
+not [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture).
+Also you can do a [firmware upgrade](TODO) to get rid of the security vulnerability.
+
+But the bootloader prevents from [uploading unauthorized firmware](TODO) anyways.
+You first have to leak the bootloader key.
+And then also the [Firmware authenticity protection](TODO) will take account of this.
+
+### Firmware authenticity protection
+You will notice a firmware change because the FID Hash has changed.
+
+### Bootloader authenticity protection
+Overwriting the bootloader will also overwrite the FID Hash.
+Bootloader authenticity can be checked from the bootloader. TODO link, TODO do we implement this?
+This can be used to verify the device after receiving it from the vendor.
+
+### Bootloader key protection
+Each device comes with a unique bootloader key that was set by the vendor.
+The vendor is responsible for keeping the BK secret and also maintains firmware updates.
+The responsibility can be transferred to the user (and also back to the vendor).
+You still have [firmware authentication protection](TODO) if the bootloader key was leaked.
 
 
 ```
