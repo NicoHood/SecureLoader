@@ -7,58 +7,16 @@ features, potential attacks and solutions to prevent them.
 This readme describes a **temporary concept** with some ideas.
 It is **not final**. Contributions appreciated.
 
-## Goal
-Our firmware deals with some information that is secured.
-A manipulated firmware or bootloader could introduce backdoors to leak this secure information.
-The most important thing we want to achieve in our project
-is to ensure that our firmware and bootloader is running unmodified without any backdoors.
-
-Therefore we need to ensure a few things:
-* The firmware is the one we uploaded and has not been reuploaded (integrity?? TODO)
-* The firmware was not manipulated by a bootloader that runs before executing the firmware
-
-This leads us to a few conclusions:
-* The **firmware needs to authenticate itself at every start** to ensure it is the correct firmware
-* TODO the nonce is cleared after every ISP chip erase
-* This is one of the **most important goals**. The security also relies on the firmware, not only the bootloader!
-* The bootloader is not responsible for uploading an unauthorized firmware
-* We need to ensure that the bootloader is not able to manipulate the firmware before it runs
-
-To solve this we need:
-* At least a bootloader on the bootloader section, to ensure its not a backdoor installed
-* The bootloader cannot be read from an ISP. An ISP can only do a full flash erase.
-* The bootloader needs to always authenticate itself first via a (symmetric) secret key challenge
-* If the bootloader is trusted, you can trustfully check the firmwares checksum
-* The bootloader needs to prevent hacks to leak the secret key or modify the bootloader from the firmware or an ISP
-* The initial secret key has to be unique from the vendor, is exchanged after shipping the device and should be changed afterwards
-* The (symmetric key) should **not always** be used to authenticate the bootloader at **every startup**,
-  since the PC then always have the key stored, use the firmware instead for this purpose
-
-Optionally the bootloader could also be used to:
-* The bootloader needs to check its and the firmwares integrity (checksum) before starting
-* The bootloader is able to provide a recovery mode to authenticate itself
-* The bootloader is also be able to verify the firmware integrity (checksum) at any time
-* The bootloader is able to flash new firmwares to authorized people
-* The bootloader needs to authenticate itself to the PC before flashing new firmwares
-* A PK/SK pair would improve the authenticity
-* The PC needs to authenticate itself to the bootloader for flashing new firmwares
-* A PK/SK pair would not improve this TODO?
-
-Advantages:
-* You can ship the device with a secure initial bootloader
-* You can(!) ship the device without an initial firmware (force latest version install)
-* You can still recompile the bootloader with a changeable initial key
-* You can recompile new firmwares and still develop new stuff
-
-
 ### Assumptions
+The following assumptions describe a worst case scenario and might differ to the real world.
 * The attacker has full physical access of the device.
 * The device can be opened and an ISP can be used without a visible change.
 * The attacker is able to steal the device and put it back at any time.
 * The initial password is kept secure by the vendor until the user requests it.
+* The uploading PC is compromised when doing firmware upgrades.
 * The AVR is programmed with the correct fuses.
 
-### Bootloader Mode/Device Start TODO name
+### Boot Process
 0. Device startup, always run the bootloader (BOOTRST=0)
 1. POST: Check the bootloader and firmware integrity (checksum) at startup
 2. Special case if no boot key was set (after ISP the bootloader)
@@ -147,6 +105,8 @@ you (vendor) send the user a firmware, a firmware hash, a new encrypted password
 
   the flashing tool sends the 2 challenges and the bootloader has to answer both. with the 1st you can trust the bootloader if you trust your pc. with the 2nd you can send the answer to the vendor and he can verify this challenge as well.
 
+The (symmetric key) should **not always** be used to authenticate the bootloader at **every startup**, since the PC then always have the key stored, use the firmware instead for this purpose
+
 Other option via UID (one time only)
 1) enter uid request code in the app, press enter
 2) check the returned code is the good one
@@ -171,12 +131,16 @@ Signing the firmware authenticates the firmware (rather than the PC) to the boot
 This means you can create new firmwares from a trusted PC and do **firmware upgrades from an untrusted PC**.
 The vendor can provide firmware upgrades without leaking the secret bootloader key.
 
-However the vendor still can (and should) give away the inital bootloader key to the user if it requests it.
+The vendor still can give away the initial bootloader key to the user if he requests it.
 Then the user can **compile and sign his own firmwares** and play with the device.
 Then the user is responsible for further firmware upgrades.
+After exchanging the initial bootloader key from the vendor the user should change it.
 
-To prevent replay attacks (firmware downgrades) the bootloader key should be changed after each upload.
-After exchanging the initial bootloader key from the vendor to the user it should be changed too.
+To prevent replay attacks (firmware downgrades) the BK should be changed before each upload.
+This ensures that a new bootloader key was changed and an old firmware can not be used again.
+The new firmware has to be signed with the new bootloader key.
+The vendor can force a BK change to upload a new firmwares.
+Developers (who own the BK) do not have to change the BK for each upload.
 
 ##### Firmware upgrade sequence
 1. Receive signed firmware checksums from the PC
@@ -235,6 +199,8 @@ It should use a Firmware ID Hash to authenticate itself to the user.
 The Firmware ID Hash consists of the FID and a (per firmware user) nonce.
 This way the nonce can be changed at any time if an unauthorized people sees the FID Hash.
 The firmware will display the FID Hash and the **user needs to verify it**.
+
+**The security also relies on the firmware, not only the bootloader!**
 
 ### Fuse Settings
 
@@ -299,8 +265,10 @@ This can be handled by the vendor or the user.
 Flashing a new firmware will also change the firmware ID Hash (TODO link).
 The user is able notice a firmware change, even with an ISP.
 
+Firmware downgrades (replay attacks) are prevented via bootloader ket changes.
+
 ### Hacking the bootloader from the firmware protection
-**TODO this needs to be checked and carefully coded.**
+**TODO this needs to be checked and carefully coded. Maybe we dont even need to ensure this**
 
 Even if a firmware vulnerability was found you can hardly hack the bootloader.
 AVR use [harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture),
@@ -313,11 +281,20 @@ And then also the [Firmware authenticity protection](TODO) will take account of 
 
 ### Firmware authenticity protection
 You will notice a firmware change because the FID Hash has changed.
+You will also notice this if a new bootloader was burned.
+To check the firmwars authenticity you can always read the checksum from bootloader.
+This way you can ensure that the bootloader did not manipulate the firmware.
 
 ### Bootloader authenticity protection
-Overwriting the bootloader will also overwrite the FID Hash.
+Overwriting the bootloader via ISP will also overwrite the FID Hash and BK.
 Bootloader authenticity can be checked from the bootloader. TODO link, TODO do we implement this?
 This can be used to verify the device after receiving it from the vendor.
+
+### Device authenticity protection
+Bootloader authenticity can be used with the bootloader.
+This way you can securely ship the device and verify its authenticity.
+TODO link, TODO do we implement this?
+Or rather use UID?
 
 ### Bootloader key protection
 Each device comes with a unique bootloader key that was set by the vendor.
@@ -325,25 +302,27 @@ The vendor is responsible for keeping the BK secret and also maintains firmware 
 The responsibility can be transferred to the user (and also back to the vendor).
 You still have [firmware authentication protection](TODO) if the bootloader key was leaked.
 
+### Open source guarantee
+The bootloader design is open source. This means it can be reviewed by many people.
+Preventing flashing unauthorized firmware does not essentially restrict custom firmwares. TODO link
 
-```
-you need to sign the firmware with the hash. the vendor (you) know the initial hash. so you can always sign any firmware. you can transfere it via an insecure email, since its is just a hash. the bootloader will only accept signed firmwares. you dont even need a password to flash the firmware. so people who dont want to remember any bootloader key can keep the responsiblity to you.
-for those who want to develop their own firmwares they need to request the key from you. they should change it afterwards for security reasons though. with the key they can singn the firmware themselves. but need to keep the key secure themselves
+You are still able to burn again the bootloader on your own.
+Keep in mind that the FID Hash will change and all bootloader and firmware data will be lost.
 
-and how do we prevent firmware downgrades? that would mean ANYONE with the firmware can flash an old firmware again.
-simply encrypt the new bootloader password (shiped with the firmware) with the current bootloader password
-so you pass a new bootloader password with the new firmware and the firmware cannot be flashed again?
-you (as vendor) can provide password changes with thefirmware
-```
+### License
+TODO
+
 
 ### FAQ
 
-Why not PublicKey/PrivateKey?
+TODO improve
+
+##### Why not PublicKey/PrivateKey?
 Uses a lot of flash and is not required.
 Does not secure anything more. Pc is not more trusted than before.
 Symmetric AES is used anyways
 
-Why not only allow signed firmwares?
+##### Why not only allow signed firmwares? TODO this is wrong
 As a developer I like to play with open source devices. The user should also be able to make use of the bootloader. It does not lower the security, if the user carefully checks the firmware checksum on the PC. This needs to be integrated (forced) into the flashing tool.
 
 ### TODO

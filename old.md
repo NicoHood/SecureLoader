@@ -1,5 +1,10 @@
 # SecureLoader
 
+Our firmware deals with some information that is secured.
+A manipulated firmware or bootloader could introduce backdoors to leak this secure information.
+The most important thing we want to achieve in our project
+is to ensure that our firmware and bootloader is running unmodified without any backdoors.
+
 ## Bootloader overview
 
 ### Bootloader use case
