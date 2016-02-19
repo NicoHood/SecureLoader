@@ -7,26 +7,31 @@ features, potential attacks and solutions to prevent them.
 This readme describes a **temporary concept** with some ideas.
 It is **not final**. Contributions appreciated.
 
-### Assumptions
+### Bootloader properties
+TODO thinks like size, 32u4, avr, lufa, usb, hid
+
+### Assumptions/Attack Scenario TODO name?
 The following assumptions describe a worst case scenario and might differ to the real world.
+* The firmware handles secure information that can be leaked via a firmware backdoor.
 * The attacker has full physical access of the device.
 * The device can be opened and an ISP can be used without a visible change.
 * The attacker is able to steal the device and put it back at any time.
 * The initial password is kept secure by the vendor until the user requests it.
 * The uploading PC is compromised when doing firmware upgrades.
+* The security also relies on the firmware, not only the bootloader (firmware authenticity)!
 * The AVR is programmed with the correct fuses.
 
 ### Boot Process
 0. Device startup, always run the bootloader (BOOTRST=0)
 1. POST: Check the bootloader and firmware integrity (checksum) at startup
-2. Special case if no boot key was set (after ISP the bootloader)
+2. Special case if no bootloader key was set (after ISP the bootloader)
   1. Force to set a bootloader key via USB HID
   2. Reboot via watchdog reset
 3. Recovery mode entered (press special hardware keys at startup)
   * Verify the firmwares checksum if the PC requests it TODO link
   * Do a [firmware upgrade](#firmware-upgrade)
   * Change the bootloader key with a signed and encrypted new password
-  * [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc)
+  * [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc) TODO???
   * Reboot via watchdog reset
 4. Recovery mode not entered (just plug in the device)
   1. Write the firmware identifier into a special ram position
@@ -40,6 +45,10 @@ Use a single bit instead?
 TODO dont allow to start the bootloader via firmware for security?
 ~~use hwb instead of bootrst~~ -> POST
 Use the other bits for FID and firmware upgrade violation? but how to reset the flag and let the (all!) user know?
+
+### Bootloader initiation
+TODO how to start the bootloader via physical keys pressing at startup/restart.
+Add a note in the firmware maybe?
 
 ### Secure bootloader section (SBS)
 The bootloader has to store a few settings in the protected bootloader flash section:
@@ -86,7 +95,7 @@ The initial bootloader key can be used to provide firmware upgrades without leak
 
 #### Authenticate the bootloader to the PC
 
-**Discussion: is this feature essential?**
+**Discussion: is this feature essential? This section contains some thought trash.**
 
 The Bootloader key is used to **authenticate the bootloader to the PC**.
 The PC sends a random challenge to the bootloader which it has to hash with the BK.
@@ -106,6 +115,14 @@ you (vendor) send the user a firmware, a firmware hash, a new encrypted password
   the flashing tool sends the 2 challenges and the bootloader has to answer both. with the 1st you can trust the bootloader if you trust your pc. with the 2nd you can send the answer to the vendor and he can verify this challenge as well.
 
 The (symmetric key) should **not always** be used to authenticate the bootloader at **every startup**, since the PC then always have the key stored, use the firmware instead for this purpose
+
+You could (and can) do this with the bootloader.
+For usability it is very bad though, because you always need a PC with an app
+that checks the bootloader integrity first and then firmware.
+Also it might be considered to be a security risk to always use a PC
+with a symmetric key to authenticate the device.
+
+The concept is, that the bootloader can be considered trusted. dont we need this then?
 
 Other option via UID (one time only)
 1) enter uid request code in the app, press enter
@@ -200,7 +217,14 @@ The Firmware ID Hash consists of the FID and a (per firmware user) nonce.
 This way the nonce can be changed at any time if an unauthorized people sees the FID Hash.
 The firmware will display the FID Hash and the **user needs to verify it**.
 
-**The security also relies on the firmware, not only the bootloader!**
+The advantage is that the firmware has access to the special hardware
+such as display and smartcard and makes it easier for the user to control.
+The authentication mechanism is not described here and part of the firmware.
+If the firmware is not trusted, you can use the bootloader again
+to verify the bootloader and the firmware integrity.
+This needs to be done explicit when the user runs the bootloader in its recovery mode.
+
+**Conclusion: The security also relies on the firmware, not only the bootloader!**
 
 ### Fuse Settings
 
@@ -227,15 +251,33 @@ ATmega32u4 fuse settings:
 
 See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more information.
 
-### Other implementation details:
- * All secret keys needs to be saved in the bootloader section
- * Those keys needs to be on whole flash page to avoid flash corruption
- * Use brown out detection to avoid flash corruption
+### Other ideas:
+Just some ideas, or maybe things that needs to find their way into the readme.
+Unstructured.
+
  * The bootloader could share its AES implementation to the firmware code.
+ * the bootloader recovery mode can only be entered via physical button press for more security
  * Do not leave any trace in EEPROM or RAM
  * Add an user interface to download the firmware again
- * TODO MAYBE let the bootloader key be changed (set a flag ONCE for a single boot) from the user firmware for more security.
- * pass the FID via ram and also anothe byte to identify wrong bootloader attacks, BK forced changed and future use things.
+ * bootloader authentification needs to be discussed
+ * bootloader violation flag pased to firmware?
+ -> pass the FID via ram and also anothe byte to identify wrong bootloader attacks, BK forced changed and future use things.
+* A symmetric key for each device requires a lot of different signed firmwares
+* Initial symmetric key **needs to be changed**, after it was exchanged via insecure email
+-> maybe create a secure encrypted "reset password" package. so the key will be displayed on the bootloader rather than visible in an email?
+ * Symmetric key should be random and not generate via a serial number algorithm
+ * Optional (closed source) encrypted(!) firmwares are possible. reading the firmware back has to be forbidden then. checksum might be allowed though.
+ * You need to trust the seller/signing person (or youself if you request the BK)
+ * we have a problem if the BK was lost (only reburning via ISP is possible, but a reasonable option. the firmware should be able to do self backups)
+ * If bootloader crypto functions are insecure, we have a problem (ISP required for new bootloader. means the secureloader has to be good/veryfied befor using it.)
+ * If we use symmetric signing the firmware should not be able to see the secret.
+ * opening the avr for xxx$ will leak the BK. this should be noted, maybe as assumption?
+ * It is important that a brute forcing the unlock is impossible
+ * verifying the firmware after receiving the package should be required or at least noticed somehow.
+ * The concept is, that the bootloader can be considered trusted
+ * Therefor the **firmware** needs to **authenticate itself** at **every start**. This can be done before any USB communication (fo the firmware) was started.
+ * we need to ensure that a fake firmware has no access to the bootloader.
+ * A modified bootloader could not check the firmware integrity (checksum) reliable. There should be no way to modify the bootloader by anyone.
 
 ### Attacks TODO rename to "protection" caption
  * The bootloader password is kept secure. (Still got firmware integrity check)
@@ -255,7 +297,7 @@ See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more informati
 
 TODO links
 
-### Flashing unauthorized firmware protection
+### Unauthorized firmware upgrade/downgrade protection
 Only signed firmwares can be flashed with the bootloader.
 You can even flash the device from a not trusted PC.
 
@@ -266,6 +308,9 @@ Flashing a new firmware will also change the firmware ID Hash (TODO link).
 The user is able notice a firmware change, even with an ISP.
 
 Firmware downgrades (replay attacks) are prevented via bootloader ket changes.
+
+A compromised PC cannot initiate a firmware upgrade.
+The bootloader can only be started via a physical key press.
 
 ### Hacking the bootloader from the firmware protection
 **TODO this needs to be checked and carefully coded. Maybe we dont even need to ensure this**
@@ -281,14 +326,16 @@ And then also the [Firmware authenticity protection](TODO) will take account of 
 
 ### Firmware authenticity protection
 You will notice a firmware change because the FID Hash has changed.
+This check has to be done by the user at every boot and needs to be coded in the firmware.
 You will also notice this if a new bootloader was burned.
-To check the firmwars authenticity you can always read the checksum from bootloader.
+To check the firmwares authenticity you can always read the checksum from bootloader.
 This way you can ensure that the bootloader did not manipulate the firmware.
 
 ### Bootloader authenticity protection
 Overwriting the bootloader via ISP will also overwrite the FID Hash and BK.
 Bootloader authenticity can be checked from the bootloader. TODO link, TODO do we implement this?
 This can be used to verify the device after receiving it from the vendor.
+Even though the bootloader can be authenticated the firmware should also do it at every boot.
 
 ### Device authenticity protection
 Bootloader authenticity can be used with the bootloader.
@@ -302,6 +349,11 @@ The vendor is responsible for keeping the BK secret and also maintains firmware 
 The responsibility can be transferred to the user (and also back to the vendor).
 You still have [firmware authentication protection](TODO) if the bootloader key was leaked.
 
+### Compromised PC protection
+TODO
+Firmware upgrade/downgrade protection.
+Bootloader initiation protection.
+
 ### Open source guarantee
 The bootloader design is open source. This means it can be reviewed by many people.
 Preventing flashing unauthorized firmware does not essentially restrict custom firmwares. TODO link
@@ -309,24 +361,29 @@ Preventing flashing unauthorized firmware does not essentially restrict custom f
 You are still able to burn again the bootloader on your own.
 Keep in mind that the FID Hash will change and all bootloader and firmware data will be lost.
 
+### Links
+TODO
+
 ### License
 TODO
 
 
 ### FAQ
 
-TODO improve
-
 ##### Why not PublicKey/PrivateKey?
-Uses a lot of flash and is not required.
-Does not secure anything more. Pc is not more trusted than before.
-Symmetric AES is used anyways
+Asymmetric encryption/signing is not required as the BK is considered to be kept secure.
+An exchange via an insecure channel is not required.
+If the vendor gives the user the initial BK you can change the BK afterwards.
+Symmetric AES implementation is smaller and can be reused in the firmware.
+An asymmetric signing could make the bootloader key authentication simpler though.
 
-##### Why not only allow signed firmwares? TODO this is wrong
+##### Why not only allow signed firmwares?
+TODO this is wrong
 As a developer I like to play with open source devices. The user should also be able to make use of the bootloader. It does not lower the security, if the user carefully checks the firmware checksum on the PC. This needs to be integrated (forced) into the flashing tool.
 
 ### TODO
 TODO write Firmware Identifier etc capital/idential
+TODO write headlines capital
 TODO check integrity and authenticity words if they match
 TODO numbe the section, to make it more clear what sub headline is for what topic.
  * Add minimum RAM requirement if the bootloader is finished.

@@ -52,11 +52,6 @@ is to ensure that our firmware and bootloader is running unmodified without any 
  * Do a watchdog reset for application starting to keep all registers cleared
  * Ensure the firmware cannot modify the bootloader. -> but if we have a malicious firmware, didnt we already fail in out task?
 
-### Other ideas:
- * Lock the firmware for the first use until the user requests an initial boot key.
- * Read up on DFU lock bits to preserve firmware reading?
- * Add a (symmetric AES) secret per device that can sign a "challange" to proof the bootloader is not modified. this check can be provided via special email to the seller. The fuse bits should prevent the secret from being read. however opening the device should prevent this. this would help on top of that and secure until opening the mcu package which is impossible to operate afterwards. this requires aes though.
-
 ### Links
 
 #### Security aspects
@@ -64,78 +59,18 @@ is to ensure that our firmware and bootloader is running unmodified without any 
  * http://hackaday.com/2014/07/05/overwriting-a-protected-avr-bootloader/
  * https://media.ccc.de/v/32c3-7189-key-logger_video_mouse
  * http://jtxp.org/tech/tinysafeboot_en.htm
+ * https://en.wikipedia.org/wiki/CBC-MAC
+ * https://nacl.cr.yp.to/box.html
+ * [AVRNaCl](http://munacl.cryptojedi.org/atmega.shtml)
+ * http://www.atmel.com/images/doc2589.pdf
+ * http://www.atmel.com/images/doc2541.pdf
 
 #### AVR Bootloaders
  * http://www.nongnu.org/avr-libc/user-manual/group__avr__boot.html
  * http://www.avrfreaks.net/forum/faq-c-writing-bootloader-faq?page=all
  * https://www.mikrocontroller.net/articles/AVR_Bootloader_in_C_-_eine_einfache_Anleitung
-
-
-## Attack scenarios
- * A compromised PC uploads a malicious firmware
- * A local attacker uploads a malicious firmware
- * The malicious firmware adds a backdoor where the attacker can get your keys
-
-
-## Solutions
-
-TODO add a separate section for not used ideas, to show the cons when we finished with the final idea
-
-### Asymmetric public/private key firmware signing
-
-#### Concept
- * Only upload trusted firmware that was signed with a private key from the vendor
-
-#### Why asymmetric and not symmetric
- * Do not leak the secret from inside the hardware
- * Otherwise you are not able to flash the bootloader again without the secret
- * A symmetric key for each device requires a lot of different signed firmwares
- * Initial symmetric key needs to be changed, after it was exchanged via insecure email
- * Symmetric key should be random and not generate via a serial number algorithm
-
-#### Pros
- * Only trusted firmware can be uploaded
- * Maybe signing implementation can be reused
- * Optional (closed source) encrypted firmwares are possible
-
-#### Cons
- * No proprietary firmware can be uploaded
- * Recompiling firmware needs the exact same build environment to confirm the source
- * You need to trust the seller/signing person
- * The private key of this person needs to be secure
- * If the person looses the key or dies we have a problem
- * Developing is not flexible or might add a backdoor
- * **Uses a lot of/too much flash probably**
- * If bootloader signing is insecure, we have a problem
- * Accessible all the time
- * You can still downgrade to a vulnerable signed version
-
-#### Implementation details
- * [AVRNaCl](http://munacl.cryptojedi.org/atmega.shtml) could be used
- * If we use symmetric signing (we wont, see above), the firmware should not be able to see the secret.
-
-#### Links
- * http://www.atmel.com/images/doc2589.pdf
- * http://www.atmel.com/images/doc2541.pdf
- * [Symmetric key is insecure](http://www.avrfreaks.net/comment/1134251#comment-1134251)
-
-### Un/Locking the firmware flashing
-
-#### Concept
- * The bootloader should be lock- and unlockable.
- * Only authorized people should be able to unlock the bootloader.
- * The initial unlock code ~~should not~~ must rely on the seller and **must** be changed after first unlocking
- * Code should be different to smartcard pin
- * It is important that a brute forcing the unlock is impossible
- * Bootloader can be unlocked from the PC via HID (and does not rely on the firmware to unlock)
- * The flashing of new firmware should always be locked and needs to be unlocked first.
-   So people dont forget to lock the device again after a firmware upgrade
-
-#### Unsolved attack scenarios
- * Initial firmware of the device should not be considered trusted, if NSA opens the post package
- -> Sending the initial password AFTER receiving? -> you rely on the seller and production again
- -> paranoid people should upload new firmware
-  * Ensure the firmware cannot modify the bootloader. Bootloader should be considered trusted was the concept. (because of the reason above)
+ * http://www.embedds.com/all-you-need-to-know-about-avr-fuses/
+ * http://www.engbedded.com/fusecalc/
 
 
 Introduction
@@ -148,31 +83,7 @@ The SecureLoader aims to consider all this cases. This paper described potential
 TODO add section "where you would want to use secure loader"
 
 
-### Feature overview
-* Check the bootloader and firmware integrity (checksum) at startup
-* Recovery mode entered (press special hardware keys)
- * Authenticate the bootloader to the PC (via symmetric bootloader key)
-  * PC sends a random challenge, bootloader sends back a hash of challenge + bootloader key
-  * The user can trust the bootloader
- * Provide an option to verify the firmwares integrity (checksum)
- * Provide an option to flash new firmware
-  * No bootloader key set
-   * Bootloader key needs to be entered
-   * Initial unique bootloader key from vendor is highly recommended
-  * Bootloader key was set
-   * Authenticate the PC to the bootloader (via symmetric bootloader key)
-    * Bootloader sends a random challenge, PC sends back a hash of challenge + bootloader key
-    * The random challenge forbids firmware downgrades with the same firmware + bootloader key hash
-    * TODO on wrong authentication set some flag, that the firmware can read next time
-   * Delete firmware identifier
-   * Increase firmware counter
-   * Write firmware
-   * Verify the firmware checksum
-   * Firmware is written successful
-    * Write new random firmware identifier with new firmware counter
-   * Firmware is corrupted/checksum incorrect
-    * Write only the new firmware counter
-    * Send an error to the PC
+### booting the firmware
 * Recovery mode not entered (just plug in the device)
  * Write the firmware identifier into a special ram position
  * The firmware should hash this identifier with a nonce to authenticate itself
@@ -188,95 +99,25 @@ TODO add section "where you would want to use secure loader"
 
 
 
-
-
-  Attacks:
-
-  Someone tried to downgrade the firmware
-
-  Solution:
-   1. Each firmware update results in a different firmware identifier. The firmware cannot authenticate itself anymore.
-   2. The PC needs to authenticate itself to the bootloader via a random challenge, not a hashed firmware checksum that is always the same
-
-
-
-
   Anforderungen
-  * The bootloader is able to flash new firmwares to authorized people
+  * The bootloader is able to flash new authenticated firmwares
   * The bootloader is able to provide a recovery mode to authenticate itself and check its and the firmwares integrity
-
-  * The bootloader needs to authenticate itself to the PC
-  * The PC needs to authenticate itself to the bootloader for flashing new firmwares
   * The bootloader needs to check its and the firmwares integrity (checksum)
   * The bootloader prevents hacks to leak the secret key or modify the bootloader from the firmware
 
 
-  * The bootloader is not responsible for uploading an unauthorized firmware
-  * The firmware need to authenticate itself at **every start** to ensure it is original, not the bootloader. The bootloader could still do so.
 
 
-
-  Anforderungen oder Zielsetzung oder overview
-  * The bootloader does not prevent from using an ISP to overwrite it
-  -> It rather authenticate itself to the PC to check its integrity
-  * The bootloader prevents from uploading firmwares from unauthorized people
-  -> The PC (user) needs to authenticate itself to the bootloader
-  * The bootloader prevents not from uploading an unauthorized firmware from authorized people
-  -> But the bootloader prevents hacks to leak the secret key or modify the bootloader from the firmware
-  * The bootloader can be used to check the firmwares (and itselfs) integrity (checksum) at any time
-  -> The firmware should still authenticate itself at every start for security risks
-  * The bootloader password needs to be kept secret
-  -> This does not lower the security of the firmware itself, but the risk or an attacker flashing new firmware
-  * The bootloader integrity
-  -> To verify the
-
-
-  To ensure the firmware you are running is the one you uploaded
-  you need to verify at **every start** that the running firmware is original.
-
-  You could (and can) do this with the bootloader.
-  For usability it is very bad though, because you always need a PC with an app
-  that checks the bootloader integrity first and then firmware.
-  Also it might be considered to be a security risk to always use a PC
-  with a symmetric key to authenticate the device.
-
-  Therefor the **firmware** needs to **authenticate itself** at **every start**.
-  This can be done before any USB communication was started.
-  The advantage is that the firmware has access to the special hardware
-  such as display and smartcard and makes it easier for the user to control.
-  The authenticate mechanism is not described here and part of the firmware.
-  If the firmware is not trusted, you can use the bootloader again
-  to verify the bootloader and the firmware integrity.
-  This needs to be done explicit when the user runs the bootloader in its recovery mode.
-  Adding a bootloader also ensures, that there is no other fake bootloader
-  which manipulates the firmware before running it.
-
-
-  Therfore we need to ensure that a fake firmware has no access to the bootloader.
-
-
-
-
-
-
-  ## Possible attacks and solutions
-
-   The general risk of a bootloader is, that someone who is not allowed to can modify the firmware very simple. This can be done via PC side attack (virus) or via physical attack.
-
-   To ensure that the firmwares integrity is intact we need to ensure that the bootloader is not hackable from various attacks. Furthermore it should secure the flashing of new firmwares and check their integrity.
-
-   The following attack scenarios should give you an overview of possible attacks and the solutions/explanation what prevents the attack.
 
   ### The attack scenario
    The attacker could be someone getting access to the device (that holds your passwords), modify it, add a backdoor and give it back to you. You then use the firmware to save your passwords, his backdoor writes them in EEPROM and downloads them later again. An evil colleague could be that guy. Or someone who gets the device when you are away/while shipping it to you.
 
-   This is an active attack where the attacker also somehow needs to get back the data later.
+   This is an **active attack** where the attacker also somehow needs to get back the data later.
    The encrypted data on the device is still secure unless the malicious firmware backdoors it.
 
-  ###Bootloader tasks:
-   * Check firmware integrity (checksum) at any time from PC
-   * Check bootloader and firmware integrity at boot
-   * Upload a new firmware from authorized people
+
+
+
 
   TODO atgtacker gets pc virus
 
@@ -288,10 +129,9 @@ TODO add section "where you would want to use secure loader"
    An attacker could abuse this to make the firmware itself not trusted anymore.
    This could be done by getting physical access to the device when carrying it with you or even while shipping it to you.
 
-   Therefor it is important that the bootloader integrity itself needs to be considered secure.
-   There should be no way to modify the bootloader by anyone.
 
-   **The initial bootloader integrity after manufacturing and the device is not faked is assumed here.**
+
+
 
   #### Manipulating the bootloader from firmware
    With some methods it could be possible to [modify a bootloader from the firmware](http://oneweekwonder.blogspot.de/2014/07/bootjacker-amazing-avr-bootloader-hack.html).
