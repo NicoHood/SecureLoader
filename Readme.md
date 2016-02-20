@@ -228,14 +228,13 @@ This needs to be done explicit when the user runs the bootloader in its recovery
 
 ### Fuse Settings
 
-ATmega32u4 fuse settings:
+AVR fuse settings:
 * Low: 0xFF
 * High: 0xD8
 * Extended: 0xF8
-* Lock: 0x??
+* Lock: 0xCC
 
-**TODO check lock bits**
-
+#### Fuse explanation
 - Ext. Crystal Osc.; Frequency 8.0- MHz; Start-up time: 16K CK + 65 ms; [CKSEL=1111 SUT=11]
 - [ ] Clock output on PORTC7; [CKOUT=0]
 - [ ] Divide clock by 8 internally; [CKDIV8=0]
@@ -250,6 +249,32 @@ ATmega32u4 fuse settings:
 - [ ] Hardware Boot Enable; [HWBE=0]
 
 See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more information.
+
+#### Lock bit explanation
+- [X] Lock Bit Protection Modes (Memory Lock); [BLB0=00]
+- [ ] Boot Lock Bit0 Protection Modes (Application Section); [BLB0=11]
+- [x] Boot Lock Bit1 Protection Modes (Boot Loader Section); [BLB1=00]
+
+```
+32u4 Datasheet Page 346: Table 28-2. Lock Bit Protection Modes
+
+LP Mode 3:
+Further programming and verification of the Flash and EEPROM is
+disabled in Parallel and Serial Programming mode. The Boot Lock
+bits and Fuse bits are locked in both Serial and Parallel
+Programming mode.
+
+BLB0 Mode 1:
+"No restrictions for SPM or (E)LPM accessing the Application
+section."
+
+BLB1 Mode 3:
+"SPM is not allowed to write to the Boot Loader section,
+and (E)LPM executing from the Application section is not
+allowed to read from the Boot Loader section. If Interrupt
+Vectors are placed in the Application section, interrupts
+are disabled while executing from the Boot Loader section."
+```
 
 ### Other ideas:
 Just some ideas, or maybe things that needs to find their way into the readme.
