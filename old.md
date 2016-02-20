@@ -25,7 +25,6 @@ is to ensure that our firmware and bootloader is running unmodified without any 
  * Reusable AES implementation
 
 ### Security assumptions
- * ~~Without opening the device you cannot modify the bootloader~~
  * Without [access to the firmware](http://oneweekwonder.blogspot.co.uk/2014/07/bootjacker-amazing-avr-bootloader-hack.html) you are not able to modify the bootloader
  * We consider the bootloader integrity secure then
 
