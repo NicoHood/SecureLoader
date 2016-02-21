@@ -1,80 +1,117 @@
 # SecureLoader
 
 The idea is to create an USB HID bootloader that can easily upgrade an AVR firmware
-with even increasing the security of the device. This paper describes use cases,
-features, potential attacks and solutions to prevent them.
+with even increasing the security of the device and its firmware.
+The bootloader protects against potential backdoors and malicious firmware upgrades.
+This paper describes use cases, features, potential attacks and solutions to prevent them.
 
 This readme describes a **temporary concept** with some ideas.
 It is **not final**. Contributions appreciated.
 
-### Bootloader properties
-TODO thinks like size, 32u4, avr, lufa, usb, hid
+## Bootloader overview
 
-### Assumptions/Attack Scenario TODO name?
+### Bootloader use case
+* Security updates
+* Feature updates
+* Uploading a self recompiled firmware
+* Developing new firmware features
+* Verify bootloader and firmwares authenticity and integrity
+
+### Bootloader Properties
+* Protects firmwares confidentiality, authenticity, integrity
+* Uses USB HID Protocol
+* No special drivers required
+* Coded for AVR USB Microcontrollers
+* Optimized for 32u4
+* Fits into 4kb bootloader section TODO
+* Based on LUFA
+* Reusable AES implementation
+* Open Source
+
+### Attack Scenario
+Conditions for device security:
+* The AVR is programmed with the correct fuses.
+* The initial password is kept secure by the vendor until the user requests it.
+* The security also relies on the firmware, not only the bootloader (firmware authenticity)!
+* The bootloader key is changed after every firmware upgrade.
+
 The following assumptions describe a worst case scenario and might differ to the real world.
 * The firmware handles secure information that can be leaked via a firmware backdoor.
 * The attacker has full physical access of the device.
 * The device can be opened and an ISP can be used without a visible change.
 * The attacker is able to steal the device and put it back at any time.
-* The initial password is kept secure by the vendor until the user requests it.
 * The uploading PC is compromised when doing firmware upgrades.
-* The security also relies on the firmware, not only the bootloader (firmware authenticity)!
-* The AVR is programmed with the correct fuses.
+
+## Technical Details
 
 ### Boot Process
 0. Device startup, always run the bootloader (BOOTRST=0)
 1. POST: Check the bootloader and firmware integrity (checksum) at startup
 2. Special case if no bootloader key was set (after ISP the bootloader)
   1. Force to set a bootloader key via USB HID
-  2. Reboot via watchdog reset
+  2. Clear RAM and reboot via watchdog reset
 3. Recovery mode entered (press special hardware keys at startup)
   * Verify the firmwares checksum if the PC requests it TODO link
   * Do a [firmware upgrade](#firmware-upgrade)
   * Change the bootloader key with a signed and encrypted new password
   * [Authenticate the bootloader to the PC (via bootloader key)](#authenticate-the-bootloader-to-the-pc) TODO???
-  * Reboot via watchdog reset
+  * Clear RAM and reboot via watchdog reset
 4. Recovery mode not entered (just plug in the device)
   1. Write the firmware identifier into a special ram position
   2. Start the firmware
   3. The user needs to authenticate the firmware TODO link
 
+### Power on self test (POST)
+The bootloader checks the bootloader and firmware checksum at every boot to **prevent flash corruption**.
+Some parts of the SBS are excluded from this check like the booloader checksum and the FWVC.
+Fuse and Lock bits will also be checked.
 
-### Reboot Mechanism
-TODO magic bootkey in RAMEND (16 bit)
-Use a single bit instead?
-TODO dont allow to start the bootloader via firmware for security?
-~~use hwb instead of bootrst~~ -> POST
-Use the other bits for FID and firmware upgrade violation? but how to reset the flag and let the (all!) user know?
+### Recovery mode
+After [device startup](TODO) the bootloader normally executes the firmware after a POST.
+To enter the recovery mode you need to manually press a physical button.
+This ensures that you cannot enter the recovery mode automatic from the PC side.
+Firmware upgrades are done less often so the user have to explicitly call the recovery mode.
+A note how to start the recovery mode should be placed inside the firmware (manual).
 
-### Bootloader initiation
-TODO how to start the bootloader via physical keys pressing at startup/restart.
-Add a note in the firmware maybe?
+After entering the recovery mode the user can TODO
 
 ### Secure bootloader section (SBS)
 The bootloader has to store a few settings in the protected bootloader flash section:
 * Bootloader Checksum
 * Bootloader Key
 * Firmware Checksum
-* Firmware Counter
+* Firmware Counter (32bit)
 * Firmware Identifier
+* Firmware Violation Counter (32bit)
 
 They are stored in **special flash page** to avoid flash corruption of the bootloader code.
 The bootloaders flash is protected by fuses and though it is safe from being read via ISP.
 **TODO why is it secure from malicious firmware?**
 This secure bootloader section is also excluded from the bootloaders checksum.
 Typically the last bootloader flash page is used to store the bootloader settings.
+The firmware has no direct (read/write) access to the data except the BJT.
+
+### Bootloader Jump Table (BJT)
+The Bootloader Jump Table is used to call functions of the bootloader from the firmware.
+This can be used to implement further security functions inside the firmware.
+
+Available Jump Table functions are:
+* Get FID
+* Get FWC
+* Get FWVC
+* AES
+
+TODO
 
 ### Bootloader key (BK)
+The Bootloader Key is used to sign the firmware and every bootloader related crypto.
+Initially the vendor set a BK to verify the device authenticity and integrity.
+The BK can be changed at any time and is stored inside the SBS.
+The BK needs to be kept **highly secure** and should be changed be changed after exchanging.
 
 TODO length
 TODO encryption algorithm
-TODO stored in sbs
-
-used for:
-firmware authentification when doing fw upgrade
-Authenticate the bootloader to the PC
-
-The BK needs to be kept **highly secure** and should be changed be changed after exchanging.
+TODO used for: Authenticate the bootloader to the PC
 
 #### Change the bootloader key
 You need to change the bootloader key from the bootloader if no one was set yet.
@@ -123,6 +160,8 @@ Also it might be considered to be a security risk to always use a PC
 with a symmetric key to authenticate the device.
 
 The concept is, that the bootloader can be considered trusted. dont we need this then?
+
+**A firmware bug could leak the FID hash or UID. The only way to verify the device is the bootloader key.**
 
 Other option via UID (one time only)
 1) enter uid request code in the app, press enter
@@ -180,9 +219,6 @@ If the uploading failed a flag will be set to let the firmware notice the upload
 
 TODO how to remove this flag, only authorized people should be able to?
 
-### Power on self test (POST)
-The bootloader checks the bootloader and firmware checksum at every boot to **prevent flash corruption**.
-
 ### Firmware Checksum (FW Checksum)
 The Firmware Checksum is generated after uploading a new firmware by the bootloader and stored in the SBS.
 The PC can **verify the Firmware Integrity** with the Firmware Checksum and the Firmware Counter.
@@ -190,10 +226,18 @@ The Firmware checksum is used as part of the POST and the FID.
 
 TODO hash algorithm: crc32?
 
-### Firmware Counter (FCNT)
+### Firmware Counter (FWC)
 The bootloader keeps track of the number of firmware uploads.
 This information is important to check if someone even tried to hack your device.
-The firmware counter is part of the FID.
+The firmware counter is part of the FID, stored inside the SBS and 32 bit large.
+
+### Firmware Violation Counter (FWVC)
+The Firmware Violation Counter keeps track of the number of firmware uploads that fail.
+This can happen if the signature or the checksums of the firmware are wrong.
+The firmware is able to read this value at any time and can use if for any user warnings.
+The FWVC is stored inside the SBS.
+
+TODO Required? Checksum needs to be excluded from this.
 
 ### Firmware Identifier (FID)
 The firmware identifier lets the firmware authenticate itself to the user.
@@ -213,22 +257,35 @@ The **firmware is responsible** to authenticate itself with the use of the FID.
 It should use a Firmware ID Hash to authenticate itself to the user.
 **Only authorized people** should be able to verify (see) the Firmware ID Hash.
 
-The Firmware ID Hash consists of the FID and a (per firmware user) nonce.
+The Firmware ID Hash consists of the FID, a nonce and (optional) the user nonce.
 This way the nonce can be changed at any time if an unauthorized people sees the FID Hash.
 The firmware will display the FID Hash and the **user needs to verify it**.
 
 The advantage is that the firmware has access to the special hardware
 such as display and smartcard and makes it easier for the user to control.
 The authentication mechanism is not described here and part of the firmware.
+
 If the firmware is not trusted, you can use the bootloader again
 to verify the bootloader and the firmware integrity.
 This needs to be done explicit when the user runs the bootloader in its recovery mode.
 
 **Conclusion: The security also relies on the firmware, not only the bootloader!**
 
+### Firmware Authentification
+Before the user uses the firmware functions it should verify the firmware authenticity.
+Therefor the FID Hash is used and should be accepted by the user.
+If the FID Hash is different the firmware was upgraded or otherwise modified.
+
+1. Start the firmware
+2. Loade the desired user
+3. Authenticate the user
+4. Get the FID
+5. Generate FID Hash from FID, User nonce and another nonce
+6. User verifies the FID Hash
+
 ### Fuse Settings
 
-AVR fuse settings:
+ATmega32u4 fuse settings:
 * Low: 0xFF
 * High: 0xD8
 * Extended: 0xF8
@@ -251,7 +308,7 @@ AVR fuse settings:
 See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more information.
 
 #### Lock bit explanation
-- [X] Lock Bit Protection Modes (Memory Lock); [BLB0=00]
+- [x] Lock Bit Protection Modes (Memory Lock); [BLB0=00]
 - [ ] Boot Lock Bit0 Protection Modes (Application Section); [BLB0=11]
 - [x] Boot Lock Bit1 Protection Modes (Boot Loader Section); [BLB1=00]
 
@@ -275,6 +332,146 @@ allowed to read from the Boot Loader section. If Interrupt
 Vectors are placed in the Application section, interrupts
 are disabled while executing from the Boot Loader section."
 ```
+
+## Provided guarantees TODO security featurs
+
+### Flash corruption protection
+* Brown out detection
+* Secure bootloader section
+* Power on self test
+
+TODO links
+
+### Unauthorized firmware upgrade/downgrade protection
+Only signed firmwares can be flashed with the bootloader.
+You can even flash the device from a not trusted PC.
+
+The bootloader key to sign the firmware needs to be kept secure.
+This can be handled by the vendor or the user.
+
+Flashing a new firmware will also change the firmware ID Hash (TODO link).
+The user is able notice a firmware change, even with an ISP.
+
+Firmware downgrades (replay attacks) are prevented via bootloader ket changes.
+
+A compromised PC cannot initiate a firmware upgrade.
+The bootloader can only be started via a physical key press.
+
+### Hacking the bootloader from the firmware protection
+If someone is able to upload malicious firmware to the device he needs access to the BK.
+If he has got the BK, he could simply fake and burn a new (fake) bootloader instead.
+Therefor it is mostly useless to hack the bootloader from the firmware.
+except if opening the device to ISP can be visually noticed.
+
+This attack scenario concentrates more on bootloader hacking via firmware vulnerabilities.
+Even if a firmware vulnerability was found you can hardly hack the bootloader.
+AVR use [harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture),
+not [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture).
+Also you can do a [firmware upgrade](TODO) to get rid of the security vulnerability.
+
+But the bootloader prevents from [uploading unauthorized firmware](TODO) anyways.
+You first have to leak the bootloader key.
+And then also the [Firmware authenticity protection](TODO) will take account of this.
+Apart from this you should check and apply security firmware upgrades regularly.
+
+### Firmware authenticity protection
+You will notice a firmware change because the FID Hash has changed.
+This check has to be done by the user at every boot and needs to be coded in the firmware.
+You will also notice this if a new bootloader was burned.
+To check the firmwares authenticity you can always read the checksum from bootloader.
+This way you can ensure that the bootloader did not manipulate the firmware.
+
+### Bootloader authenticity protection
+Overwriting the bootloader via ISP will also overwrite the FID Hash and BK.
+ISP also requires access to the PCB which can be visually noticed on some devices.
+Bootloader authenticity can be checked from the bootloader. TODO link, TODO do we implement this?
+This can be used to verify the device after receiving it from the vendor.
+Even a 1:1 copy of the device could be noticed through the bootloader key.
+Even though the bootloader can be authenticated the firmware should also do it at every boot.
+
+### Device authenticity protection
+Bootloader authenticity can be used with the bootloader.
+This way you can securely ship the device and verify its authenticity.
+TODO link, TODO do we implement this?
+Or rather use UID?
+
+### Bootloader key protection
+Each device comes with a unique bootloader key that was set by the vendor.
+The vendor is responsible for keeping the BK secret and also maintains firmware updates.
+The responsibility can be transferred to the user (and also back to the vendor).
+You still have [firmware authentication protection](TODO) if the bootloader key was leaked.
+
+### Passive Attack Protection
+The firmware is responsible for passive attacks such as securing sensible data.
+
+### Active Attack Protection
+SecureLoader protects against several active attacks as listed above and below.
+See [Attack Scenario](TODO) for a worst case attack scenario.
+
+### Compromised PC protection
+TODO
+Firmware upgrade/downgrade protection.
+Firmware checksum.
+Firmware ID Hash.
+Bootloader initiation protection via physical button press.
+
+### Firmware Brick Protection
+If you upload a bricked firmware it is always possible to enter the bootloader again.
+Then you can upload another firmware instead and continue testing.
+You should not lose you BK to be able to upload another firmware again.
+
+### Open Source Guarantee
+The bootloader design is open source. This means it can be reviewed by many people.
+Preventing flashing unauthorized firmware does not essentially restrict custom firmwares. TODO link
+
+You are still able to burn again the bootloader on your own.
+Keep in mind that the FID Hash will change and all bootloader and firmware data will be lost.
+
+### Links
+
+#### Security
+* [Atmel AVR231: AES Bootloader](http://www.atmel.com/images/doc2589.pdf)
+* [AVR230: DES Bootloader](http://www.atmel.com/images/doc2541.pdf)
+* [Overwriting a Protected AVR Bootloader](http://hackaday.com/2014/07/05/overwriting-a-protected-avr-bootloader/)
+* [BootJacker: The Amazing AVR Bootloader Hack!](http://oneweekwonder.blogspot.de/2014/07/bootjacker-amazing-avr-bootloader-hack.html)
+* [NaCl](https://nacl.cr.yp.to/box.html)
+* [AVRNaCl](http://munacl.cryptojedi.org/atmega.shtml)
+* ["Key-logger, Video, Mouse" Talk at 32c3](https://media.ccc.de/v/32c3-7189-key-logger_video_mouse)
+
+
+
+#### AVR Bootloaders
+* [avr-libc Bootloader Support Utilities](http://www.nongnu.org/avr-libc/user-manual/group__avr__boot.html)
+* [Bootloader FAQ](http://www.avrfreaks.net/forum/faq-c-writing-bootloader-faq?page=all)
+* [AVR Bootloader in C - eine einfache Anleitung](https://www.mikrocontroller.net/articles/AVR_Bootloader_in_C_-_eine_einfache_Anleitung)
+* [All you need to know about AVR fuses](http://www.embedds.com/all-you-need-to-know-about-avr-fuses/)
+* [Engbedded Atmel AVR Fuse Calculator](http://www.engbedded.com/fusecalc/)
+
+
+### License
+TODO
+GPL incompatible with CDDL
+
+
+### FAQ
+
+#### Why not PublicKey/PrivateKey?
+Asymmetric encryption/signing is not required as the BK is considered to be kept secure.
+An exchange via an insecure channel is not required.
+If the vendor gives the user the initial BK you can change the BK afterwards.
+Symmetric AES implementation is smaller and can be reused in the firmware.
+An asymmetric signing could make the bootloader key authentication simpler though.
+
+#### Why not only allow signed firmwares?
+TODO this is wrong
+As a developer I like to play with open source devices. The user should also be able to make use of the bootloader. It does not lower the security, if the user carefully checks the firmware checksum on the PC. This needs to be integrated (forced) into the flashing tool.
+
+#### I lost my Bootloader key. What can I do?
+The BK is normally **maintained by the vendor**. Ask him first for the initial BK.
+There is **no way to recover a bootloader key** if you have changed the initial vendor BK.
+You can continue to use the current firmware but wont be able to upload any new firmware.
+You might want to check the firmware authenticity first to exclude a faked the bootloader.
+You may use an ISP to burn a new bootloader, but this will **destroy any data** on the AVR.
 
 ### Other ideas:
 Just some ideas, or maybe things that needs to find their way into the readme.
@@ -305,110 +502,13 @@ Unstructured.
   * A modified bootloader could not check the firmware integrity (checksum) reliable. There should be no way to modify the bootloader by anyone.
   * maybe use something bigger than the 32u4?
   * The user is responsible for not uploading malicious firmware if he owns the BK.
-
-```
---- Quote ---The AT90USB1286 and AT90USB646 have an USB interface for applications communicating with a USB host. The AT90USB1287 and AT90USB647 comply with the USB On-The-Go (OTG) standard for use as Dual Role Devices (DRD) in applications operating as either host or function device. The USB host capability is key to embedded devices needing to communicate without PC intervention.
-
-The AT90USB1286 and AT90USB1287 have 128 KBytes of In-System Programmable (ISP) Flash, 8 KBytes of RAM and 4 KBytes of EEPROM. The AT90USB646 and AT90USB647 are identical but with half the memory size. All devices have an on-chip bootloader that allows ISP through the USB bus providing unrivalled flexibility from development phase to field update.
---- End quote ---
-```
+  * Random number generation needs to be secure.
+  * assuming a compromised pc does not secure the firmware though obviously
+  * Access the FID via bootloader jump table function instead of ram, to make it simpler.
+  * Forbit EEPROM reading from the bootloader?
+  * Should every bootloader get a unique ID too? this way you can identify the device appart from the sticker on the backside.
 
 
-## Provided guarantees
-
-### Flash corruption protection
-* Brown out detection
-* Secure bootloader section
-* Power on self test
-
-TODO links
-
-### Unauthorized firmware upgrade/downgrade protection
-Only signed firmwares can be flashed with the bootloader.
-You can even flash the device from a not trusted PC.
-
-The bootloader key to sign the firmware needs to be kept secure.
-This can be handled by the vendor or the user.
-
-Flashing a new firmware will also change the firmware ID Hash (TODO link).
-The user is able notice a firmware change, even with an ISP.
-
-Firmware downgrades (replay attacks) are prevented via bootloader ket changes.
-
-A compromised PC cannot initiate a firmware upgrade.
-The bootloader can only be started via a physical key press.
-
-### Hacking the bootloader from the firmware protection
-**TODO this needs to be checked and carefully coded. Maybe we dont even need to ensure this**
-
-Even if a firmware vulnerability was found you can hardly hack the bootloader.
-AVR use [harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture),
-not [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture).
-Also you can do a [firmware upgrade](TODO) to get rid of the security vulnerability.
-
-But the bootloader prevents from [uploading unauthorized firmware](TODO) anyways.
-You first have to leak the bootloader key.
-And then also the [Firmware authenticity protection](TODO) will take account of this.
-
-### Firmware authenticity protection
-You will notice a firmware change because the FID Hash has changed.
-This check has to be done by the user at every boot and needs to be coded in the firmware.
-You will also notice this if a new bootloader was burned.
-To check the firmwares authenticity you can always read the checksum from bootloader.
-This way you can ensure that the bootloader did not manipulate the firmware.
-
-### Bootloader authenticity protection
-Overwriting the bootloader via ISP will also overwrite the FID Hash and BK.
-Bootloader authenticity can be checked from the bootloader. TODO link, TODO do we implement this?
-This can be used to verify the device after receiving it from the vendor.
-Even though the bootloader can be authenticated the firmware should also do it at every boot.
-
-### Device authenticity protection
-Bootloader authenticity can be used with the bootloader.
-This way you can securely ship the device and verify its authenticity.
-TODO link, TODO do we implement this?
-Or rather use UID?
-
-### Bootloader key protection
-Each device comes with a unique bootloader key that was set by the vendor.
-The vendor is responsible for keeping the BK secret and also maintains firmware updates.
-The responsibility can be transferred to the user (and also back to the vendor).
-You still have [firmware authentication protection](TODO) if the bootloader key was leaked.
-
-### Compromised PC protection
-TODO
-Firmware upgrade/downgrade protection.
-Firmware checksum.
-Firmware ID Hash.
-Bootloader initiation protection via physical button press.
-
-### Open source guarantee
-The bootloader design is open source. This means it can be reviewed by many people.
-Preventing flashing unauthorized firmware does not essentially restrict custom firmwares. TODO link
-
-You are still able to burn again the bootloader on your own.
-Keep in mind that the FID Hash will change and all bootloader and firmware data will be lost.
-
-### Links
-TODO
-
-### License
-TODO
-GPL incompatible with CDDL
-
-
-### FAQ
-
-##### Why not PublicKey/PrivateKey?
-Asymmetric encryption/signing is not required as the BK is considered to be kept secure.
-An exchange via an insecure channel is not required.
-If the vendor gives the user the initial BK you can change the BK afterwards.
-Symmetric AES implementation is smaller and can be reused in the firmware.
-An asymmetric signing could make the bootloader key authentication simpler though.
-
-##### Why not only allow signed firmwares?
-TODO this is wrong
-As a developer I like to play with open source devices. The user should also be able to make use of the bootloader. It does not lower the security, if the user carefully checks the firmware checksum on the PC. This needs to be integrated (forced) into the flashing tool.
 
 ### TODO
  * TODO write Firmware Identifier etc capital/idential
