@@ -208,21 +208,21 @@ Keep in mind that the FID Hash will change and all bootloader and firmware data 
 
 ## 3. Technical Details
 
-1. Bootloader Overview
- 1. Boot Process
- 2. Secure Bootloader Section (SBS)
- 3. Bootloader Jump Table (BJT)
- 4. Power on Self Test (POST)
- 5. Recovery Mode
- 6. Crypto Algorithms
-2. Bootloader Key (BK)
- 1. Overview
- 2. No Bootloader Key set
- 3. Initial Bootloader Key
- 4. Change the Bootloader Key
- 5. Authenticate the Bootloader to the PC
-3. Firmware Upgrade
- 1. Overview
+1. Bootloader Components
+ 1. [Boot Process](#311-boot-process)
+ 2. [Secure Bootloader Section (SBS)](#312-secure-bootloader-section-sbs)
+ 3. [Bootloader Jump Table (BJT)](#313-bootloader-jump-table-bjt)
+ 4. [Power on Self Test (POST)](#314-power-on-self-test-post)
+ 5. [Recovery Mode](#315-recovery-mode)
+ 6. [Crypto Algorithms](#316-crypto-algorithms)
+2. [Bootloader Key (BK)](#32-bootloader-key-bk)
+ 1. [Overview](#321-overview)
+ 2. [No Bootloader Key set](#322-no-bootloader-key-set)
+ 3. [Initial Bootloader Key](#323-initial-bootloader-key)
+ 4. [Change the Bootloader Key](#324-change-the-bootloader-key)
+ 5. [Authenticate the Bootloader to the PC](#325-authenticate-the-bootloader-to-the-pc)
+3. [Firmware Upgrade](r#33-firmware-upgrade)
+ 1. [Overview](#331-overview)
  2. Firmware Upgrade Sequence
  3. Firmware Checksum (FW Checksum)
  4. Firmware Counter (FWC)
@@ -236,7 +236,7 @@ Keep in mind that the FID Hash will change and all bootloader and firmware data 
  2. Fuse Explanation
  3. Lock Bit Explanation
 
-### 3.1 Bootloader Overview
+### 3.1 Bootloader Components
 
 #### 3.1.1 Boot Process
 0. Device startup, always run the bootloader (BOOTRST=0)
@@ -331,6 +331,8 @@ bootloader via USB HID. It is intended that it is **not possbile to upload a
 firmware until a Bootloader Key was set**. It is not possible to remove a
 Bootloader Key afterwards. **Never ship a device without an inital vendor
 Bootloader Key.** TODO link
+
+TODO will boot straight into recovery mode and require a password change first.
 
 #### 3.2.3 Initial Bootloader Key
 A **unique BK is initially set by the vendor** who is also responsible for
@@ -557,10 +559,12 @@ are disabled while executing from the Boot Loader section."
 
 ### Why not Public Key/Private Key?
 Asymmetric encryption/signing is not required as the BK is considered to be kept secure.
-An exchange via an insecure channel is not required.
+An exchange via an insecure channel is not required, asymmetric will not improve much.
 If the vendor gives the user the initial BK you can change the BK afterwards.
 Symmetric AES implementation is smaller and can be reused in the firmware.
 An asymmetric signing could make the Bootloader Key authentication simpler though.
+
+TODO a privat key is required on both sides and dont need to be exchanged (thats one step after hybrid actually)
 
 ### Why not only allow signed Firmwares?
 TODO this is wrong
