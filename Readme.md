@@ -57,47 +57,37 @@ It is **not final**. Contributions appreciated.
 
 **TODO just link to technical details and dont duplicate information**
 
-1. Unauthorized Firmware Upgrade/Downgrade Protection
+1. [Bootloader/Device Authenticity Protection]()
+2. [ISP Protection]()
+3. [Brute Force Protection]()
+4. [Compromised PC protection]()
+5. [Hacking the Bootloader from the Firmware Protection]()
+6. [Unauthorized Firmware Upgrade/Downgrade Protection]()
+7. [Firmware Authenticity Protection]()
+8. [Flash Corruption Protection]()
+9. [Firmware Brick Protection]()
+10. [Open Source Guarantee]()
 
 
-Bootloader/Device Authenticity Protection
-ISP Protection
-Compromised PC protection
+### 2.1 Bootloader/Device Authenticity Protection
+Each device comes with a unique [Bootloader Key](#32-bootloader-key-bk) that was
+[set by the vendor](#323-initial-bootloader-key) or
+[the user](#324-change-the-bootloader-key). **The owner of the
+[Bootloader Key](#32-bootloader-key-bk) is responsible for keeping it secret**.
 
-Firmware Authenticity Protection
-Bootloader Key Protection
+The [Bootloader and device authenticity](#325-authenticate-the-bootloader-to-the-pc)
+is ensured through the [Bootloader Key](#32-bootloader-key-bk).
+Techniques how the [Bootloader Key](#32-bootloader-key-bk) is kept secure are
+described below.
 
-Hacking the Bootloader from the Firmware Protection
-
-Flash Corruption Protection
-Firmware Brick Protection
-Open Source Guarantee
-
-TODO remove those?
-Passive Attack Protection
-Active Attack Protection
-
-### Bootloader/Device Authenticity Protection
-The Bootloader and device authenticity is ensured through the [Bootloader Key](TODO).
-TODO link
-
-#### Bootloader Key Protection
-Each device comes with a unique Bootloader Key that was set by the vendor. The
-vendor is responsible for keeping the BK secret and also maintains Firmware
-updates. The responsibility can be transferred to the user (and also back to the
-vendor). You still have Firmware authentication protection if the Bootloader Key
-was leaked.
-
-In order to keep the BK secure
-ISP Protection
-Firmware protection
-
-
-TODO see BK protection?
-
+### 2.2 ISP Protection
+TODO FID, Bootloader authenticity, fuses
+does not work because of [SBS](#312-secure-bootloader-section-sbs)
 Overwriting the Bootloader
-via ISP will also overwrite the [FID Hash](#343-firmware-id-hash-fid-hash) and BK. **The BK needs to be kept
-highly secure.**
+via ISP will also overwrite the [FID Hash](#343-firmware-id-hash-fid-hash) and the BK.
+ISP also requires physical access to the PCB which can be visually noticed on some devices.
+
+
 
 You also want to check Bootloader authenticity if your [FID Hash](#343-firmware-id-hash-fid-hash) changed. The
 Bootloader can authenticate itself to the PC via an authentication package. Even
@@ -107,54 +97,20 @@ authenticate itself it at every boot**.
 TODO link, TODO do we implement this?
 Or rather use UID?
 
+### 2.3 Brute Force Protection
+TODO
+AES
+TIMEOUT/lock
 
 
-
-### ISP Protection
-TODO FID, Bootloader authenticity, fuses
-ISP also requires physical access to the PCB which can be visually noticed on some devices.
-
-
-### Firmware Authenticity Protection
-You will notice a Firmware change because the [FID Hash](#343-firmware-id-hash-fid-hash) has changed. This check
-has to be done by the user at every boot and needs to be coded in the Firmware.
-You will also notice this if a new Bootloader was burned. To check the Firmwares
-authenticity you can always read the checksum from Bootloader. This way you can
-ensure that the Bootloader did not manipulate the Firmware.
-
-
-
-
-### Compromised PC protection
+### 2.4 Compromised PC protection
 TODO
 Firmware upgrade/downgrade protection.
 Firmware checksum.
 Firmware ID Hash.
 Bootloader initiation protection via physical button press.
 
-
-
-
-### Unauthorized Firmware Upgrade/Downgrade Protection
-Only signed Firmwares can be flashed with the Bootloader.
-You can even flash the device from a not trusted PC.
-
-Every Firmware needs to be signed with the Bootloade Key.
-The BK is kept secure by the vendor or by the user.
-
-Flashing a new Firmware will also change the Firmware ID Hash (TODO link).
-The user is able notice a Firmware change, even with an ISP.
-
-Firmware downgrades (replay attacks) are prevented via Bootloader key changes.
-
-A compromised PC cannot initiate a Firmware upgrade.
-The Bootloader can only be started via a physical key press.
-
-
-
-
-
-### Hacking the Bootloader from the Firmware Protection
+### 2.5 Hacking the Bootloader from the Firmware Protection
 If someone is able to upload malicious Firmware to the device he needs access to
 the BK. If he has got the BK, he could simply fake and burn a new (fake)
 Bootloader instead. Therefor it is mostly useless to hack the Bootloader from
@@ -173,33 +129,44 @@ protection will take account of this. Apart from this you should check and apply
 security Firmware upgrades regularly.
 
 
+does not work because of [SBS](#312-secure-bootloader-section-sbs)
 
+### 2.6 Unauthorized Firmware Upgrade/Downgrade Protection
+Only signed Firmwares can be flashed with the Bootloader.
+You can even flash the device from a not trusted PC.
 
+Every Firmware needs to be signed with the Bootloade Key.
+The BK is kept secure by the vendor or by the user.
 
+Flashing a new Firmware will also change the Firmware ID Hash (TODO link).
+The user is able notice a Firmware change, even with an ISP.
 
+Firmware downgrades (replay attacks) are prevented via Bootloader key changes.
 
-### Passive Attack Protection
-The Firmware is responsible for passive attacks such as securing sensible data.
+A compromised PC cannot initiate a Firmware upgrade.
+The Bootloader can only be started via a physical key press.
 
-### Active Attack Protection
-SecureLoader protects against several active attacks as listed above and below.
-See [Attack Scenario](TODO) for a worst case attack scenario.
+### 2.7 Firmware Authenticity Protection
+You will notice a Firmware change because the [FID Hash](#343-firmware-id-hash-fid-hash) has changed. This check
+has to be done by the user at every boot and needs to be coded in the Firmware.
+You will also notice this if a new Bootloader was burned. To check the Firmwares
+authenticity you can always read the checksum from Bootloader. This way you can
+ensure that the Bootloader did not manipulate the Firmware.
+TODO note the firmware is also responsible for this.
 
-
-
-### Flash Corruption Protection
+### 2.8 Flash Corruption Protection
 * [Brown-out detection (Fuse)](#36-fuse-settings)
 * [Secure Bootloader section (SBS)](#312-secure-bootloader-section-sbs)
 * [Power on self test (POST)](#314-power-on-self-test-post)
 
-### Firmware Brick Protection
+### 2.9 Firmware Brick Protection
 If you upload a bricked Firmware it is always possible to enter the Bootloader
 again. The Bootloader does **not rely on any part of the Firmware**. Then you
 can upload another Firmware instead and continue testing. You should not lose
 you BK to be able to upload another Firmware again.
 Also see [Flash Corruption Protection](TODO)
 
-### Open Source Guarantee
+### 2.10 Open Source Guarantee
 The Bootloader design is open source. This means it can be reviewed by many people.
 Preventing unauthorized Firmware upgrades does not essentially restrict custom Firmwares. TODO link
 
