@@ -78,7 +78,7 @@ Passive Attack Protection
 Active Attack Protection
 
 ### Bootloader/Device Authenticity Protection
-The Bootloader and device authenticity is ensured through the Bootloader Key.
+The Bootloader and device authenticity is ensured through the [Bootloader Key]().
 TODO link
 
 #### Bootloader Key Protection
@@ -188,30 +188,30 @@ See [Attack Scenario](TODO) for a worst case attack scenario.
 
 
 ### Flash Corruption Protection
-* Brown out detection (Fuse)
-* Secure Bootloader section ([SBS](#312-secure-bootloader-section-sbs))
-* Power on self test (POST)
+* [Brown-out detection (Fuse)](#36-fuse-settings)
+* [Secure Bootloader section (SBS)](#312-secure-bootloader-section-sbs)
+* [Power on self test (POST)](#314-power-on-self-test-post)
 
 ### Firmware Brick Protection
 If you upload a bricked Firmware it is always possible to enter the Bootloader
 again. The Bootloader does **not rely on any part of the Firmware**. Then you
 can upload another Firmware instead and continue testing. You should not lose
 you BK to be able to upload another Firmware again.
+Also see [Flash Corruption Protection](TODO)
 
 ### Open Source Guarantee
 The Bootloader design is open source. This means it can be reviewed by many people.
-Preventing flashing unauthorized Firmware does not essentially restrict custom Firmwares. TODO link
+Preventing unauthorized Firmware upgrades does not essentially restrict custom Firmwares. TODO link
 
-You are still able to burn again the Bootloader on your own.
+You are still able to burn the Bootloader on your own at any time.
 Keep in mind that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and all Bootloader and Firmware data will be lost.
 
 
 ## 3. Technical Details
-
 1. [Bootloader Components](#31-Bootloader-components)
  1. [Boot Process](#311-boot-process)
  2. [Secure Bootloader Section (SBS)](#312-secure-Bootloader-section-sbs)
- 3. [Bootloader Jump Table (BJT)](#313-Bootloader-jump-table-bjt)
+ 3. [Bootloader Jump Table (BJT)](#313-bootloader-jump-table-bjt)
  4. [Power on Self Test (POST)](#314-power-on-self-test-post)
  5. [Recovery Mode](#315-recovery-mode)
  6. [Crypto Algorithms](#316-crypto-algorithms)
@@ -259,7 +259,7 @@ Keep in mind that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and
   1. Start the Firmware
   2. The user needs to [authenticate the Firmware](#34-firmware-authentication)
 
-TODO short?
+TODO shorter?
 
 #### 3.1.2 Secure Bootloader Section (SBS)
 Secrets are stored inside the protected Bootloader flash section:
@@ -754,3 +754,4 @@ Unstructured.
  * Add minimum RAM requirement if the Bootloader is finished.
  * Add implementation requirements checklist of all features
  * better line feeds (80chars)
+ * add pgl text file
