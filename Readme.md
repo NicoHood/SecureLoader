@@ -10,13 +10,13 @@ This Readme describes a **temporary concept** with some ideas.
 It is **not final**. Contributions appreciated.
 
 ## Table of Contents
-1. Bootloader Overview
-2. Provided Guarantees TODO security features / Concept
-3. Technical Details
-4. FAQ
-5. Links
-6. Version History
-7. License and Copyright
+1. [Bootloader Overview](#1-bootloader-overview)
+2. [Provided Guarantees TODO security features / Concept]()
+3. [Technical Details](#3-technical-details)
+4. [FAQ](#4-faq)
+5. [Links](#5-links)
+6. [Version History](#6-version-history)
+7. [License and Copyright](#7-license-and-copyright)
 
 ## 1. Bootloader Overview
 
@@ -223,36 +223,43 @@ Keep in mind that the FID Hash will change and all Bootloader and Firmware data 
  5. [Authenticate the Bootloader to the PC](#325-authenticate-the-Bootloader-to-the-pc)
 3. [Firmware Upgrade](r#33-Firmware-upgrade)
  1. [Overview](#331-overview)
- 2. Firmware Checksum (FW Checksum)
- 3. Firmware Counter (FWC)
- 4. Firmware Violation Counter (FWVC)
- 5. Firmware Upgrade Sequence
-4. Firmware Authentication
- 1. Overview
- 2. Firmware Identifier (FID)
- 3. Firmware ID Hash (FID Hash)
-6. Fuse Settings
- 1. Overview
- 2. Fuse Explanation
- 3. Lock Bit Explanation
+ 2. [Firmware Checksum (FW Checksum)](#332-firmware-checksum-fw-checksum)
+ 3. [Firmware Upgrade Counter (FWUC)](#333-firmware-upgrade-counter-fwuc)
+ 4. [Firmware Violation Counter (FWVC)](#334-firmware-violation-counter-fwvc)
+ 5. [Firmware Upgrade Sequence](#335-firmware-upgrade-sequence)
+4. [Firmware Authentication](#34-firmware-authentication)
+ 1. [Overview](#341-overview)
+ 2. [Firmware Identifier (FID)](#342-firmware-identifier-fid)
+ 3. [Firmware ID Hash (FID Hash)](#343-firmware-id-hash-fid-hash)
+6. [Fuse Settings](#36-fuse-settings)
+ 1. [Fuse Overview](#361-fuse-overview)
+ 2. [Fuse Explanation](#362-fuse-explanation)
+ 3. [Lock Bit Explanation](#363-lock-bit-explanation)
 
 ### 3.1 Bootloader Components
 
 #### 3.1.1 Boot Process
 0. Device startup, always run the Bootloader (BOOTRST=0)
-1. POST: Check the Bootloader and Firmware integrity (checksum) at startup
-2. Special case if no Bootloader Key was set (after ISP the Bootloader)
+1. [POST](#314-power-on-self-test-post):
+   Check the Bootloader and Firmware integrity (checksum) at startup
+2. Special case if [no Bootloader Key was set](#322-no-bootloader-key-set)
+   (after ISP the Bootloader)
   1. Force to set a Bootloader Key via USB HID
   2. Clear RAM and reboot via watchdog reset
-3. Recovery mode entered (press special hardware keys at startup)
-  * Verify the Firmwares checksum if the PC requests it TODO link
+3. [Recovery mode](#315-recovery-mode) entered
+   (press special hardware keys at startup)
+  * Verify the [Firmwares checksum](#332-firmware-checksum-fw-checksum)
+    if the PC requests it
   * Do a [Firmware upgrade](#Firmware-upgrade)
-  * Change the Bootloader Key with a signed and encrypted new password
+  * [Change the Bootloader Key](#324-change-the-bootloader-key)
+    with a signed and encrypted new password
   * [Authenticate the Bootloader to the PC (via Bootloader Key)](#authenticate-the-Bootloader-to-the-pc) TODO???
   * Clear RAM and reboot via watchdog reset
 4. Recovery mode not entered (just plug in the device)
   1. Start the Firmware
-  2. The user needs to authenticate the Firmware TODO link
+  2. The user needs to [authenticate the Firmware](#34-firmware-authentication)
+
+TODO short?
 
 #### 3.1.2 Secure Bootloader Section (SBS)
 Secrets are stored inside the protected Bootloader flash section:
@@ -278,7 +285,7 @@ Firmware.
 
 Available Jump Table functions are:
 * Get FID
-* Get FWC
+* Get FWUC
 * Get FWVC
 * AES
 
@@ -289,6 +296,8 @@ The Bootloader checks the Bootloader and Firmware checksum at every boot to
 **prevent flash corruption**. Some parts of the SBS are excluded from this check
 like the booloader checksum and the FWVC. Fuse and Lock bits will also be
 checked.
+
+TODO we need to use CRC16/32 for this. Is it essential to do this at every boot?
 
 #### 3.1.5 Recovery Mode
 After device startup the Bootloader normally executes the Firmware after a POST.
@@ -304,6 +313,7 @@ After entering the recovery mode the user can TODO list
 AES-256 for encrypting
 AES-256 -MAC for signing
 [AES-256 -CBC-MAC for hashing](https://en.wikipedia.org/wiki/CBC-MAC)
+[CRC](http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html) for POST TODO do we need this?
 
 TODO links
 
@@ -393,20 +403,22 @@ Other option via UID (one time only)
 It is very important to **only upload trusted Firmware** from an untrusted PC
 while still keeping the **ability to create custom Firmwares**.
 
-The Firmware upgrade only accepts signed Firmwares by the Bootloader Key.
-Signing the Firmware authenticates the BK owner to the Bootloader, rather than the PC.
-This means you can create new Firmwares from a trusted PC and do
-**Firmware upgrades from an untrusted PC**. The vendor can provide Firmware
-upgrades without leaking the secret Bootloader Key.
+The Firmware upgrade only accepts signed Firmwares by the
+[Bootloader Key](#32-bootloader-key-bk). Signing the Firmware authenticates the
+BK owner to the Bootloader, rather than the PC. This means you can create new
+Firmwares from a trusted PC and do **Firmware upgrades from an untrusted PC**.
+The vendor can provide Firmware upgrades without leaking the secret
+[Bootloader Key](#32-bootloader-key-bk).
 
-The vendor still can give away the initial Bootloader Key to the user if he
-requests it. Then the user can **compile and sign his own Firmwares** and play
-with the device. The user is responsible for further Firmware upgrades.
-The initial Bootloader Key should be changed after exchanging
-it over an untrusted connection (Internet!).
+The vendor still can give away the
+[initial Bootloader Key](#323-initial-bootloader-key) to the user if he requests
+it. Then the user can **compile and sign his own Firmwares** and play with the
+device. The user is responsible for further Firmware upgrades. The initial
+[Bootloader Key should be changed](#324-change-the-bootloader-key) after
+exchanging it over an untrusted connection (Internet!).
 
-To prevent replay attacks (Firmware downgrades) the BK should be changed before
-each upload. This ensures that a new Bootloader Key was changed and an old
+To prevent [replay attacks (Firmware downgrades)](TODO) the BK should be [changed](#324-change-the-bootloader-key) before
+each upload. This ensures that a new Bootloader Key was set and an old
 Firmware can not be used again. The new Firmware has to be signed with the new
 Bootloader Key. The vendor can force a BK change to upload a new Firmwares.
 Developers (who own the BK) do not have to change the BK for each upload.
@@ -425,11 +437,14 @@ used as part of the POST and the FID.
 If one checksum is valid all other checksums should be valid too. Otherwise
 there was an error while creating the checksums or the signing algorithm is
 insecure. If the uploading failed the FWVC get increased to let the Firmware notice
-the upload violation. After a successfull upload the FWC get increased instead and the FWVC will be cleared.
+the upload violation. After a successfull upload the FWUC get increased instead and the FWVC will be cleared.
 
 TODO hash algorithm: CBC-MAC
 
-#### 3.3.3 Firmware Counter (FWC)
+TODO POST
+TODO recovery mode, verify firmware: crc??
+
+#### 3.3.3 Firmware Upgrade Counter (FWUC)
 The Bootloader keeps track of the number of Firmware uploads. This information
 is important to check if someone even tried to hack your device. The Firmware
 counter is part of the FID, stored inside the SBS and 32 bit large. It can be
@@ -441,7 +456,7 @@ that fail. This can happen if the signature or the checksums of the Firmware are
 wrong. It can be
 read from the PC and the firmware (via BJT) at any time.
 It can be used by the Firmware for user warnings.
-The FWVC is stored inside the SBS and 8 bit large. 
+The FWVC is stored inside the SBS and 8 bit large.
 
 TODO Required? Checksum needs to be excluded from this.
 
@@ -505,7 +520,7 @@ The security also relies on the Firmware, not only the Bootloader!**
 
 ### 3.6 Fuse Settings
 
-#### 3.6.1 Overview
+#### 3.6.1 Fuse Overview
 ATmega32u4 fuse settings:
 * Low: 0xFF
 * High: 0xD8
