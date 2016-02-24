@@ -96,10 +96,10 @@ Firmware protection
 TODO see BK protection?
 
 Overwriting the Bootloader
-via ISP will also overwrite the FID Hash and BK. **The BK needs to be kept
+via ISP will also overwrite the [FID Hash](#343-firmware-id-hash-fid-hash) and BK. **The BK needs to be kept
 highly secure.**
 
-You also want to check Bootloader authenticity if your FID Hash changed. The
+You also want to check Bootloader authenticity if your [FID Hash](#343-firmware-id-hash-fid-hash) changed. The
 Bootloader can authenticate itself to the PC via an authentication package. Even
 though the Bootloader can be authenticated manually the **Firmware should also
 authenticate itself it at every boot**.
@@ -116,7 +116,7 @@ ISP also requires physical access to the PCB which can be visually noticed on so
 
 
 ### Firmware Authenticity Protection
-You will notice a Firmware change because the FID Hash has changed. This check
+You will notice a Firmware change because the [FID Hash](#343-firmware-id-hash-fid-hash) has changed. This check
 has to be done by the user at every boot and needs to be coded in the Firmware.
 You will also notice this if a new Bootloader was burned. To check the Firmwares
 authenticity you can always read the checksum from Bootloader. This way you can
@@ -189,7 +189,7 @@ See [Attack Scenario](TODO) for a worst case attack scenario.
 
 ### Flash Corruption Protection
 * Brown out detection (Fuse)
-* Secure Bootloader section (SBS)
+* Secure Bootloader section ([SBS](#312-secure-bootloader-section-sbs))
 * Power on self test (POST)
 
 ### Firmware Brick Protection
@@ -203,7 +203,7 @@ The Bootloader design is open source. This means it can be reviewed by many peop
 Preventing flashing unauthorized Firmware does not essentially restrict custom Firmwares. TODO link
 
 You are still able to burn again the Bootloader on your own.
-Keep in mind that the FID Hash will change and all Bootloader and Firmware data will be lost.
+Keep in mind that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and all Bootloader and Firmware data will be lost.
 
 
 ## 3. Technical Details
@@ -266,7 +266,7 @@ Secrets are stored inside the protected Bootloader flash section:
 * Bootloader Checksum
 * Bootloader Key
 * Firmware Checksum
-* Firmware Counter (32bit)
+* Firmware Upgrade Counter (32bit)
 * Firmware Identifier
 * Firmware Violation Counter (32bit)
 
@@ -276,7 +276,7 @@ safe from being read via ISP. **TODO why is it secure from malicious Firmware?**
 This secure Bootloader section is also excluded from the Bootloaders checksum.
 Typically the last Bootloader flash page is used to store the Bootloader
 settings. The Firmware has no direct (read/write) access to the data except the
-BJT.
+[BJT](#313-bootloader-jump-table-bjt).
 
 #### 3.1.3 Bootloader Jump Table (BJT)
 The Bootloader Jump Table is used to call functions of the Bootloader from the
@@ -284,7 +284,7 @@ Firmware. This can be used to implement further security functions inside the
 Firmware.
 
 Available Jump Table functions are:
-* Get FID
+* Get [FID](#342-firmware-identifier-fid)
 * Get FWUC
 * Get FWVC
 * AES
@@ -293,7 +293,7 @@ TODO
 
 #### 3.1.4 Power on Self Test (POST)
 The Bootloader checks the Bootloader and Firmware checksum at every boot to
-**prevent flash corruption**. Some parts of the SBS are excluded from this check
+**prevent flash corruption**. Some parts of the [SBS](#312-secure-bootloader-section-sbs) are excluded from this check
 like the booloader checksum and the FWVC. Fuse and Lock bits will also be
 checked.
 
@@ -326,7 +326,7 @@ The BK can be used to **verify the devices authenticity** at any time.
 The Bootloader Key is also used to **sign new Firmware upgrades**. TODO link.
 
 The **initial BK was set by the vendor** who is also responsible for keeping the
-BK secret. The BK can be **changed at any time** and is stored inside the SBS.
+BK secret. The BK can be **changed at any time** and is stored inside the [SBS](#312-secure-bootloader-section-sbs).
 
 The BK needs to be kept **highly secure** and should be changed after exchanging
 it over an untrusted connection (Internet!).
@@ -364,7 +364,7 @@ Recovery Mode and instruct a BK change command with the new (encrypted) BK.
 **Discussion: Is this feature essential?** TODO LINK
 
 The BK can be used to **verify the devices authenticity** at any time.
-This can be used for example after receiving the device from the vendor or after a FID Hash violation. Even a 1:1 copy of the device
+This can be used for example after receiving the device from the vendor or after a [FID Hash](#343-firmware-id-hash-fid-hash) violation. Even a 1:1 copy of the device
 could be noticed through the secret Bootloader Key.
 TODO just add a link and move information
 
@@ -389,7 +389,7 @@ with a symmetric key to authenticate the device.
 
 The concept is, that the Bootloader can be considered trusted. dont we need this then?
 
-**A Firmware bug could leak the FID hash or UID. The only way to verify the device is the Bootloader Key.**
+**A Firmware bug could leak the [FID Hash](#343-firmware-id-hash-fid-hash) or UID. The only way to verify the device is the Bootloader Key.**
 
 Other option via UID (one time only)
 1) enter uid request code in the app, press enter
@@ -425,9 +425,12 @@ Developers (who own the BK) do not have to change the BK for each upload.
 
 #### 3.3.2 Firmware Checksum (FW Checksum)
 The Firmware Checksum is generated after uploading a new Firmware by the
-Bootloader and stored in the SBS. The PC can **verify the Firmware Integrity**
-with the Firmware Checksum and the Firmware Counter. The Firmware checksum is
-used as part of the POST and the FID.
+Bootloader and stored in the [SBS](#312-secure-bootloader-section-sbs). The PC
+can **verify the Firmware Integrity**
+with the Firmware Checksum and the [Firmware Upgrade Counter](#333-firmware-upgrade-counter-fwuc). The Firmware checksum is
+used as part of ~~the POST and~~ the [FID](#342-firmware-identifier-fid).
+
+TODO differentiate between checksum and hash?
 
 **Signed Firmware Checksums Content**
 * A checksum for each Firmware page
@@ -445,18 +448,19 @@ TODO POST
 TODO recovery mode, verify firmware: crc??
 
 #### 3.3.3 Firmware Upgrade Counter (FWUC)
-The Bootloader keeps track of the number of Firmware uploads. This information
+The Bootloader keeps track of the number of Firmware upgrades. This information
 is important to check if someone even tried to hack your device. The Firmware
-counter is part of the FID, stored inside the SBS and 32 bit large. It can be
-read from the PC and the firmware (via BJT) at any time.
+counter is part of the [FID](#342-firmware-identifier-fid), stored inside the
+[SBS](#312-secure-bootloader-section-sbs) and 32 bit large. It can be
+read from the PC and the firmware (via [BJT](#313-bootloader-jump-table-bjt)) at any time.
 
 #### 3.3.4 Firmware Violation Counter (FWVC)
 The Firmware Violation Counter keeps track of the number of Firmware uploads
 that fail. This can happen if the signature or the checksums of the Firmware are
 wrong. It can be
-read from the PC and the firmware (via BJT) at any time.
+read from the PC and the firmware (via [BJT](#313-bootloader-jump-table-bjt)) at any time.
 It can be used by the Firmware for user warnings.
-The FWVC is stored inside the SBS and 8 bit large.
+The FWVC is stored inside the [SBS](#312-secure-bootloader-section-sbs) and 8 bit large.
 
 TODO Required? Checksum needs to be excluded from this.
 
@@ -468,43 +472,43 @@ TODO Required? Checksum needs to be excluded from this.
 5. Flash the valid page
 6. Verify the whole Firmware checksum
 7. Abort and delete the whole Firmware if the checksum is invalid
-8. Write new Firmware identifier and new Firmware counter
+8. Write new Firmware identifier and new Firmware Upgrade Counter
 
 ### 3.4 Firmware Authentication
 
 #### 3.4.1 Overview
 Before the user uses the Firmware functions it should verify the Firmware
-authenticity. Therefor the FID Hash is used and should be accepted by the user.
-If the FID Hash is different the Firmware was upgraded or otherwise modified.
+authenticity. Therefor the [FID Hash](#343-firmware-id-hash-fid-hash) Hash is used and should be accepted by the user.
+If the [FID Hash](#343-firmware-id-hash-fid-hash) is different the Firmware was upgraded or otherwise modified.
 
 1. Start the Firmware
 2. Load the desired user
 3. Authenticate the user
-4. Get the FID
-5. Generate FID Hash from FID, User nonce and another nonce
-6. User verifies the FID Hash
+4. Get the [FID](#342-firmware-identifier-fid)
+5. Generate [FID Hash](#343-firmware-id-hash-fid-hash) from [FID](#342-firmware-identifier-fid), User nonce and another nonce
+6. User verifies the [FID Hash](#343-firmware-id-hash-fid-hash)
 
 #### 3.4.2 Firmware Identifier (FID)
 The Firmware identifier lets the Firmware authenticate itself to the user. It is
 a **unique ID** generated by the Bootloader for **each Firmware flash**, stored
-within the secure Bootloader section and passed to the Firmware via RAM. The FID
-consists of the Firmware checksum, Firmware counter and a nonce.
+within the secure Bootloader section and passed to the Firmware via RAM. The [FID](#342-firmware-identifier-fid)
+consists of the Firmware checksum, Firmware Upgrade Counter and a nonce.
 
-Uploading a new Firmware or Bootloader will destroy the FID and a **violation of
+Uploading a new Firmware or Bootloader will destroy the [FID](#342-firmware-identifier-fid) and a **violation of
 the Firmware authenticity can be noticed** by the user. Even uploading the same
-Firmware twice will result in a different FID. The FID is used in the Firmware
-ID Hash and securely stored inside the SBS.
+Firmware twice will result in a different [FID](#342-firmware-identifier-fid). The [FID](#342-firmware-identifier-fid) is used in the Firmware
+ID Hash and securely stored inside the [SBS](#312-secure-bootloader-section-sbs).
 
 TODO FID byte size (16 or 32 bit. 16 bit should be enough for 10k write cycles)
 
 #### 3.4.3 Firmware ID Hash (FID Hash)
-The **Firmware is responsible** to authenticate itself with the use of the FID.
+The **Firmware is responsible** to authenticate itself with the use of the [FID](#342-firmware-identifier-fid).
 It should use a Firmware ID Hash to authenticate itself to the user. **Only
 authorized people** should be able to verify (see) the Firmware ID Hash.
 
-The Firmware ID Hash consists of the FID, a nonce and (optional) the user nonce.
+The Firmware ID Hash consists of the [FID](#342-firmware-identifier-fid), a nonce and (optional) the user nonce.
 This way the nonce can be changed at any time if an unauthorized people sees the
-FID Hash. The Firmware will display the FID Hash and the **user needs to verify
+[FID Hash](#343-firmware-id-hash-fid-hash). The Firmware will display the [FID Hash](#343-firmware-id-hash-fid-hash) and the **user needs to verify
 it**.
 
 The advantage is that the Firmware has access to the special hardware such as
@@ -647,19 +651,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 1. It might not use much flash
 2. Increases Security (authenticity)
 3. Bootloader can be verified before flashing new Firmware
-4. Not all people might care (remember) about FID Hash. BK authenticity can always be used.
+4. Not all people might care (remember) about [FID Hash](#343-firmware-id-hash-fid-hash). BK authenticity can always be used.
 5. Device authentication should not rely on Firmware
 6. You can use it to let the BK owner verify the Bootloader (send the response back to him). Assumes emails cannot be faked.
-7. Adds another layer of security BESIDE FID Hash
-8. Note: The FID should still be used for all day use. Bootloader is ment for FW upgrades and recovery mode.
+7. Adds another layer of security BESIDE [FID Hash](#343-firmware-id-hash-fid-hash)
+8. Note: The [FID](#342-firmware-identifier-fid) should still be used for all day use. Bootloader is ment for FW upgrades and recovery mode.
 9. The concept is, that the Bootloader can be considered trusted. This is then essential if you not want to rely on Firmware.
-10. **A Firmware bug could leak (or display wrong) the FID hash or UID. The only way to verify the device is the Bootloader Key.**
+10. **A Firmware bug could leak (or display wrong) the [FID Hash](#343-firmware-id-hash-fid-hash) or UID. The only way to verify the device is the Bootloader Key.**
 
 #### Cons
 1. Can be done with Firmware
-2. FID Hash can also be used to ensure authenticity
+2. [FID Hash](#343-firmware-id-hash-fid-hash) can also be used to ensure authenticity
 3. A compromised PC could always say the Bootloader is okay
 4. Alternative is a Firmware side authentication via UID
+
+#### Compromis
+It does not hurt to include if enough flash is available
+
+### Do a POST
+
+**Discussion: Is this feature essential?**
+
+#### Pro
+1. It might not use much flash (CRC, shasum does use a lot)
+2. Increases Security (flash corruption)
+3. Is fast with CRC
+4. The user can ALWAYS verify the firmware.
+5. Could also be used inside the firmware via BJT
+
+#### Cons
+1. CRC or something else is required. AES Hash cannot be used, due to changing BK.
+2. Very unlikely that flash corrupts
+3. If the user wants to verify the firmware (integrity), the bootloader authencity also needs to be checked. Otherwise the feature could have been faked. So AES MAC could be used. This means this feature is only important for POST or very simple untrusted checks.
 
 #### Compromis
 It does not hurt to include if enough flash is available
