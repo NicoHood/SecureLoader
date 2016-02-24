@@ -11,7 +11,7 @@ It is **not final**. Contributions appreciated.
 
 ## Table of Contents
 1. [Bootloader Overview](#1-bootloader-overview)
-2. [Provided Guarantees TODO security features / Concept]()
+2. [Provided Guarantees TODO security features / Concept](TODO)
 3. [Technical Details](#3-technical-details)
 4. [FAQ](#4-faq)
 5. [Links](#5-links)
@@ -19,9 +19,9 @@ It is **not final**. Contributions appreciated.
 7. [License and Copyright](#7-license-and-copyright)
 
 ## 1. Bootloader Overview
-1. Bootloader Use Case
-2. Bootloader Properties
-3. Attack Scenario
+1. [Bootloader Use Case](#11-bootloader-use-case)
+2. [Bootloader Properties](#12-bootloader-properties)
+3. [Attack Scenario](#13-attack-scenario)
 
 ### 1.1 Bootloader Use Case
 * Security updates
@@ -43,13 +43,13 @@ It is **not final**. Contributions appreciated.
 
 ### 1.3 Attack Scenario
 
-##### Conditions for device security:
+##### Required Conditions for Device Security:
 * The AVR is programmed with the correct fuses.
 * The initial password is kept secure by the vendor until the user requests it.
 * The security also relies on the Firmware (Firmware authenticity!).
 * The Bootloader Key is changed after every Firmware upgrade.
 
-##### Worst case scenario (might differ to the real world):
+##### Worst Case Scenario (might differ to the Real World):
 * The Firmware handles secure information that a Firmware backdoor could leak.
 * The attacker has full physical access of the device.
 * The device can be opened and an ISP can be used without a visible change.
