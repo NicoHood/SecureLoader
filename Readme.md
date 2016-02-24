@@ -19,15 +19,18 @@ It is **not final**. Contributions appreciated.
 7. [License and Copyright](#7-license-and-copyright)
 
 ## 1. Bootloader Overview
+1. Bootloader Use Case
+2. Bootloader Properties
+3. Attack Scenario
 
-### Bootloader Use Case
+### 1.1 Bootloader Use Case
 * Security updates
 * Feature updates
 * Uploading a self recompiled Firmware
 * Developing new Firmware features
 * Verify Bootloader and Firmwares authenticity and integrity
 
-### Bootloader Properties
+### 1.2 Bootloader Properties
 * Protects Firmwares confidentiality, authenticity, integrity
 * Uses USB HID Protocol
 * No special drivers required
@@ -35,18 +38,18 @@ It is **not final**. Contributions appreciated.
 * Optimized for 32u4
 * Fits into 4kb Bootloader section TODO
 * Based on LUFA
-* Reusable AES implementation
-* Open Source
+* Reusable [AES implementation](#316-crypto-algorithms)
+* [Open Source](#210-open-source-guarantee)
 
-### Attack Scenario
+### 1.3 Attack Scenario
 
-#### Conditions for device security:
+##### Conditions for device security:
 * The AVR is programmed with the correct fuses.
 * The initial password is kept secure by the vendor until the user requests it.
 * The security also relies on the Firmware (Firmware authenticity!).
 * The Bootloader Key is changed after every Firmware upgrade.
 
-#### Worst case scenario (might differ to the real world):
+##### Worst case scenario (might differ to the real world):
 * The Firmware handles secure information that a Firmware backdoor could leak.
 * The attacker has full physical access of the device.
 * The device can be opened and an ISP can be used without a visible change.
@@ -54,9 +57,6 @@ It is **not final**. Contributions appreciated.
 * The uploading PC is compromised when doing Firmware upgrades.
 
 ## 2. Provided Guarantees TODO security features / Concept
-
-**TODO just link to technical details and dont duplicate information**
-
 1. [Bootloader/Device Authenticity Protection](#21-bootloaderdevice-authenticity-protection)
 2. [ISP Protection](#22-isp-protection)
 3. [Brute Force Protection](#23-brute-force-protection)
@@ -68,6 +68,7 @@ It is **not final**. Contributions appreciated.
 9. [Firmware Brick Protection](#29-firmware-brick-protection)
 10. [Open Source Guarantee](#210-open-source-guarantee)
 
+**TODO just link to technical details and dont duplicate information**
 
 ### 2.1 Bootloader/Device Authenticity Protection
 Each device comes with a unique [Bootloader Key](#32-bootloader-key-bk) that was
@@ -81,8 +82,16 @@ Techniques how the [Bootloader Key](#32-bootloader-key-bk) is kept secure are
 described below.
 
 ### 2.2 ISP Protection
+An ISP could be used to read the Bootloader and application flash content. This
+way one could burn a new faked Bootloader with a backdoor. ISP requires physical
+access to the PCB which can be visually noticed on some devices. Moreover on AVR
+the [Lock Bits](#363-lock-bits-explanation) prevent an [attacker](TODO)
+from reading the flash content. This way the
+[Bootloaders authenticity](#21-bootloaderdevice-authenticity-protection) can be
+ensured.
+
+Furthermore there
 TODO FID, Bootloader authenticity, fuses
-does not work because of [SBS](#312-secure-bootloader-section-sbs)
 Overwriting the Bootloader
 via ISP will also overwrite the [FID Hash](#343-firmware-id-hash-fid-hash) and the BK.
 ISP also requires physical access to the PCB which can be visually noticed on some devices.
@@ -205,7 +214,7 @@ Bootloader and Firmware data will be lost.
 6. [Fuse Settings](#36-fuse-settings)
  1. [Fuse Overview](#361-fuse-overview)
  2. [Fuse Explanation](#362-fuse-explanation)
- 3. [Lock Bit Explanation](#363-lock-bit-explanation)
+ 3. [Lock Bits Explanation](#363-lock-bits-explanation)
 
 ### 3.1 Bootloader Components
 
@@ -317,21 +326,24 @@ TODO will boot straight into recovery mode and require a password change first.
 #### 3.2.3 Initial Bootloader Key
 A **unique BK is initially set by the vendor** who is also responsible for
 keeping the BK secret. This ensures the **integrity of the initial Bootloader**.
-The initial Bootloader Key can be used to provide Firmware upgrades without
-exposing the BK to the user and enable Firmware upgrades on untrusted Computers.
+The initial Bootloader Key can be used to provide
+[Firmware upgrades](#33-firmware-upgrade) without
+exposing the BK to the user and enable Firmware upgrades on
+[untrusted Computers](#24-compromised-pc-protection).
 The responsibility of the BK can be transferred to any other user but should be
 changed after exchanging it over an untrusted connection (Internet!).
 
 #### 3.2.4 Change the Bootloader Key
-You need to change the Bootloader Key from the Bootloader if no one was set yet.
-Also you might want to change it for security purposes or add an initial
-Bootloader Key. This is useful when setting an
-[initial vendor Bootloader Key](#323-initial-bootloader-key)
-or changing it to give the
+You need to change the Bootloader Key from the Bootloader if
+[no one was set yet](#323-initial-bootloader-key). Also you might want to change
+it for security purposes or add an initial Bootloader Key. This is useful when
+setting an [initial vendor Bootloader Key](#323-initial-bootloader-key) or
+changing it to give the
 [user control over the Bootloader](#210-open-source-guarantee).
 
 To change the BK you need to **encrypt the new BK with the old BK**. Enter the
-Recovery Mode and instruct a BK change command with the new (encrypted) BK.
+[Recovery Mode](#315-recovery-mode) and instruct a BK change command with the
+new (encrypted) BK.
 
 #### 3.2.5 Authenticate the Bootloader to the PC
 
@@ -523,7 +535,7 @@ ATmega32u4 fuse settings:
 See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more
 information.
 
-#### 3.6.3 Lock Bit Explanation
+#### 3.6.3 Lock Bits Explanation
 - [x] Lock Bit Protection Modes (Memory Lock); [BLB0=00]
 - [ ] Boot Lock Bit0 Protection Modes (Application Section); [BLB0=11]
 - [x] Boot Lock Bit1 Protection Modes (Boot Loader Section); [BLB1=00]
