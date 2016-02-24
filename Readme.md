@@ -53,6 +53,7 @@ It is **not final**. Contributions appreciated.
 * The Firmware handles secure information that a Firmware backdoor could leak.
 * The attacker has full physical access of the device.
 * The device can be opened and an ISP can be used without a visible change.
+* This excludes opening the AVR and reading the flash bytes with a Microscope.
 * The attacker is able to steal the device and put it back at any time.
 * The uploading PC is compromised when doing Firmware upgrades.
 
@@ -85,10 +86,11 @@ described below.
 An ISP could be used to read the Bootloader and application flash content. This
 way one could burn a new faked Bootloader with a backdoor. ISP requires physical
 access to the PCB which can be visually noticed on some devices. Moreover on AVR
-the [Lock Bits](#363-lock-bits-explanation) prevent an [attacker](TODO)
-from reading the flash content. This way the
+the [Lock Bits](#363-lock-bits-explanation) prevent an
+[attacker](#13-attack-scenario) from reading the flash content. This way the
 [Bootloaders authenticity](#21-bootloaderdevice-authenticity-protection) can be
 ensured.
+
 
 Furthermore there
 TODO FID, Bootloader authenticity, fuses
@@ -123,7 +125,7 @@ Bootloader initiation protection via physical button press.
 If someone is able to upload malicious Firmware to the device he needs access to
 the BK. If he has got the BK, he could simply fake and burn a new (fake)
 Bootloader instead. Therefor it is mostly useless to hack the Bootloader from
-the Firmware except if opening the device to ISP can be visually noticed.
+the Firmware except if opening the device to ISP can not be visually noticed.
 
 This attack scenario concentrates more on Bootloader hacking via Firmware
 vulnerabilities. Even if a Firmware vulnerability was found you can hardly hack
@@ -132,13 +134,14 @@ the Bootloader. AVR use
 [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture).
 Also you can do a Firmware upgrade to get rid of the security vulnerability.
 
-But the Bootloader prevents from uploading unauthorized Firmware anyways. You
-first have to leak the Bootloader Key. And then also the Firmware authenticity
-protection will take account of this. Apart from this you should check and apply
-security Firmware upgrades regularly.
+But the Bootloader prevents from
+[uploading unauthorized Firmware](#26-unauthorized-firmware-upgradedowngrade-protection)
+ anyways. You first have to leak the Bootloader Key. And then also the Firmware
+authenticity protection will take account of this. Apart from this you should
+check and apply security Firmware upgrades regularly.
 
 
-does not work because of [SBS](#312-secure-bootloader-section-sbs)
+TODO Does not work because of [SBS](#312-secure-bootloader-section-sbs)
 
 ### 2.6 Unauthorized Firmware Upgrade/Downgrade Protection
 Only signed Firmwares can be flashed with the Bootloader.
@@ -170,22 +173,24 @@ TODO note the firmware is also responsible for this.
 
 ### 2.9 Firmware Brick Protection
 If you upload a bricked Firmware it is always possible to enter the Bootloader
-again. The Bootloader does **not rely on any part of the Firmware**. Then you
-can upload another Firmware instead and continue testing. You should not lose
-you BK to be able to upload another Firmware again.
-Also see [Flash Corruption Protection](TODO)
+[Recovery Mode](#315-recovery-mode) again. The Bootloader does **not rely on any
+part of the Firmware**. Then you can upload another Firmware instead and
+continue testing. You should not lose you BK to be able to upload another
+Firmware again. Also see
+[Flash Corruption Protection](#28-flash-corruption-protection)
 
 ### 2.10 Open Source Guarantee
-The Bootloader design is [open source](#7-license-and-copyright). This means it
-can be reviewed by many people. Preventing
+The Bootloader software is [open source](#7-license-and-copyright). This means
+it can be reviewed and improved by many people. You always able to burn the
+Bootloader on your own at any time. Keep in mind that the
+[FID Hash](#343-firmware-id-hash-fid-hash) will change and all Bootloader and
+Firmware data will be lost.
+
+Preventing
 [unauthorized Firmware upgrades](#26-unauthorized-firmware-upgradedowngrade-protection)
 does not essentially restrict
-[custom Firmwares](#324-change-the-bootloader-key).
-
-You are still able to burn the Bootloader on your own at any time. Keep in mind
-that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and all
-Bootloader and Firmware data will be lost.
-
+[custom Firmwares](#324-change-the-bootloader-key). Only signed firmware is
+accepted, but it is not encrypted (open source).
 
 ## 3. Technical Details
 1. [Bootloader Components](#31-bootloader-components)
