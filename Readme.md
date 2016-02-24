@@ -57,16 +57,16 @@ It is **not final**. Contributions appreciated.
 
 **TODO just link to technical details and dont duplicate information**
 
-1. [Bootloader/Device Authenticity Protection]()
-2. [ISP Protection]()
-3. [Brute Force Protection]()
-4. [Compromised PC protection]()
-5. [Hacking the Bootloader from the Firmware Protection]()
-6. [Unauthorized Firmware Upgrade/Downgrade Protection]()
-7. [Firmware Authenticity Protection]()
-8. [Flash Corruption Protection]()
-9. [Firmware Brick Protection]()
-10. [Open Source Guarantee]()
+1. [Bootloader/Device Authenticity Protection](#21-bootloaderdevice-authenticity-protection)
+2. [ISP Protection](#22-isp-protection)
+3. [Brute Force Protection](#23-brute-force-protection)
+4. [Compromised PC protection](#24-compromised-pc-protection)
+5. [Hacking the Bootloader from the Firmware Protection](#25-hacking-the-bootloader-from-the-firmware-protection)
+6. [Unauthorized Firmware Upgrade/Downgrade Protection](#26-unauthorized-firmware-upgradedowngrade-protection)
+7. [Firmware Authenticity Protection](#27-firmware-authenticity-protection)
+8. [Flash Corruption Protection](#28-flash-corruption-protection)
+9. [Firmware Brick Protection](#29-firmware-brick-protection)
+10. [Open Source Guarantee](#210-open-source-guarantee)
 
 
 ### 2.1 Bootloader/Device Authenticity Protection
@@ -135,7 +135,7 @@ does not work because of [SBS](#312-secure-bootloader-section-sbs)
 Only signed Firmwares can be flashed with the Bootloader.
 You can even flash the device from a not trusted PC.
 
-Every Firmware needs to be signed with the Bootloade Key.
+Every Firmware needs to be signed with the Bootloader Key.
 The BK is kept secure by the vendor or by the user.
 
 Flashing a new Firmware will also change the Firmware ID Hash (TODO link).
@@ -167,11 +167,15 @@ you BK to be able to upload another Firmware again.
 Also see [Flash Corruption Protection](TODO)
 
 ### 2.10 Open Source Guarantee
-The Bootloader design is open source. This means it can be reviewed by many people.
-Preventing unauthorized Firmware upgrades does not essentially restrict custom Firmwares. TODO link
+The Bootloader design is [open source](#7-license-and-copyright). This means it
+can be reviewed by many people. Preventing
+[unauthorized Firmware upgrades](#26-unauthorized-firmware-upgradedowngrade-protection)
+does not essentially restrict
+[custom Firmwares](#324-change-the-bootloader-key).
 
-You are still able to burn the Bootloader on your own at any time.
-Keep in mind that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and all Bootloader and Firmware data will be lost.
+You are still able to burn the Bootloader on your own at any time. Keep in mind
+that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and all
+Bootloader and Firmware data will be lost.
 
 
 ## 3. Technical Details
@@ -321,7 +325,10 @@ changed after exchanging it over an untrusted connection (Internet!).
 #### 3.2.4 Change the Bootloader Key
 You need to change the Bootloader Key from the Bootloader if no one was set yet.
 Also you might want to change it for security purposes or add an initial
-Bootloader Key. This is useful when setting an initial vendor Bootloader Key.
+Bootloader Key. This is useful when setting an
+[initial vendor Bootloader Key](#323-initial-bootloader-key)
+or changing it to give the
+[user control over the Bootloader](#210-open-source-guarantee).
 
 To change the BK you need to **encrypt the new BK with the old BK**. Enter the
 Recovery Mode and instruct a BK change command with the new (encrypted) BK.
