@@ -78,7 +78,7 @@ Passive Attack Protection
 Active Attack Protection
 
 ### Bootloader/Device Authenticity Protection
-The Bootloader and device authenticity is ensured through the [Bootloader Key]().
+The Bootloader and device authenticity is ensured through the [Bootloader Key](TODO).
 TODO link
 
 #### Bootloader Key Protection
@@ -208,20 +208,20 @@ Keep in mind that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and
 
 
 ## 3. Technical Details
-1. [Bootloader Components](#31-Bootloader-components)
+1. [Bootloader Components](#31-bootloader-components)
  1. [Boot Process](#311-boot-process)
- 2. [Secure Bootloader Section (SBS)](#312-secure-Bootloader-section-sbs)
+ 2. [Secure Bootloader Section (SBS)](#312-secure-bootloader-section-sbs)
  3. [Bootloader Jump Table (BJT)](#313-bootloader-jump-table-bjt)
  4. [Power on Self Test (POST)](#314-power-on-self-test-post)
  5. [Recovery Mode](#315-recovery-mode)
  6. [Crypto Algorithms](#316-crypto-algorithms)
-2. [Bootloader Key (BK)](#32-Bootloader-key-bk)
+2. [Bootloader Key (BK)](#32-bootloader-key-bk)
  1. [Overview](#321-overview)
- 2. [No Bootloader Key set](#322-no-Bootloader-key-set)
- 3. [Initial Bootloader Key](#323-initial-Bootloader-key)
- 4. [Change the Bootloader Key](#324-change-the-Bootloader-key)
- 5. [Authenticate the Bootloader to the PC](#325-authenticate-the-Bootloader-to-the-pc)
-3. [Firmware Upgrade](r#33-Firmware-upgrade)
+ 2. [No Bootloader Key set](#322-no-bootloader-key-set)
+ 3. [Initial Bootloader Key](#323-initial-bootloader-key)
+ 4. [Change the Bootloader Key](#324-change-the-bootloader-key)
+ 5. [Authenticate the Bootloader to the PC](#325-authenticate-the-bootloader-to-the-pc)
+3. [Firmware Upgrade](r#33-firmware-upgrade)
  1. [Overview](#331-overview)
  2. [Firmware Checksum (FW Checksum)](#332-firmware-checksum-fw-checksum)
  3. [Firmware Upgrade Counter (FWUC)](#333-firmware-upgrade-counter-fwuc)
@@ -253,7 +253,7 @@ Keep in mind that the [FID Hash](#343-firmware-id-hash-fid-hash) will change and
   * Do a [Firmware upgrade](#Firmware-upgrade)
   * [Change the Bootloader Key](#324-change-the-bootloader-key)
     with a signed and encrypted new password
-  * [Authenticate the Bootloader to the PC (via Bootloader Key)](#authenticate-the-Bootloader-to-the-pc) TODO???
+  * [Authenticate the Bootloader to the PC (via Bootloader Key)](#authenticate-the-bootloader-to-the-pc) TODO???
   * Clear RAM and reboot via watchdog reset
 4. Recovery mode not entered (just plug in the device)
   1. Start the Firmware
@@ -603,14 +603,14 @@ You may use an ISP to burn a new Bootloader, but this will **destroy any data** 
 * [Atmel AVR231: AES Bootloader](http://www.atmel.com/images/doc2589.pdf)
 * [AVR230: DES Bootloader](http://www.atmel.com/images/doc2541.pdf)
 * [Overwriting a Protected AVR Bootloader](http://hackaday.com/2014/07/05/overwriting-a-protected-avr-Bootloader/)
-* [BootJacker: The Amazing AVR Bootloader Hack!](http://oneweekwonder.blogspot.de/2014/07/bootjacker-amazing-avr-Bootloader-hack.html)
+* [BootJacker: The Amazing AVR Bootloader Hack!](http://oneweekwonder.blogspot.de/2014/07/bootjacker-amazing-avr-bootloader-hack.html)
 * [NaCl](https://nacl.cr.yp.to/box.html)
 * [AVRNaCl](http://munacl.cryptojedi.org/atmega.shtml)
 * ["Key-logger, Video, Mouse" Talk at 32c3](https://media.ccc.de/v/32c3-7189-key-logger_video_mouse)
 
 ### AVR Bootloaders
 * [avr-libc Bootloader Support Utilities](http://www.nongnu.org/avr-libc/user-manual/group__avr__boot.html)
-* [Bootloader FAQ](http://www.avrfreaks.net/forum/faq-c-writing-Bootloader-faq?page=all)
+* [Bootloader FAQ](http://www.avrfreaks.net/forum/faq-c-writing-bootloader-faq?page=all)
 * [AVR Bootloader in C - eine einfache Anleitung](https://www.mikrocontroller.net/articles/AVR_Bootloader_in_C_-_eine_einfache_Anleitung)
 * [All you need to know about AVR fuses](http://www.embedds.com/all-you-need-to-know-about-avr-fuses/)
 * [Engbedded Atmel AVR Fuse Calculator](http://www.engbedded.com/fusecalc/)
