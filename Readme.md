@@ -9,7 +9,7 @@ solutions to prevent them.
 This Readme describes a **temporary concept** with some ideas.
 It is **not final**. Contributions appreciated.
 
-## 0. Table of Contents
+## Table of Contents
 1. Bootloader Overview
 2. Provided Guarantees TODO security features / Concept
 3. Technical Details
@@ -223,10 +223,10 @@ Keep in mind that the FID Hash will change and all Bootloader and Firmware data 
  5. [Authenticate the Bootloader to the PC](#325-authenticate-the-Bootloader-to-the-pc)
 3. [Firmware Upgrade](r#33-Firmware-upgrade)
  1. [Overview](#331-overview)
- 2. Firmware Upgrade Sequence
- 3. Firmware Checksum (FW Checksum)
- 4. Firmware Counter (FWC)
- 5. Firmware Violation Counter (FWVC)
+ 2. Firmware Checksum (FW Checksum)
+ 3. Firmware Counter (FWC)
+ 4. Firmware Violation Counter (FWVC)
+ 5. Firmware Upgrade Sequence
 4. Firmware Authentication
  1. Overview
  2. Firmware Identifier (FID)
@@ -319,7 +319,7 @@ The **initial BK was set by the vendor** who is also responsible for keeping the
 BK secret. The BK can be **changed at any time** and is stored inside the SBS.
 
 The BK needs to be kept **highly secure** and should be changed after exchanging
-it over an untrusted connection.
+it over an untrusted connection (Internet!).
 
 TODO links
 
@@ -339,7 +339,7 @@ keeping the BK secret. This ensures the **integrity of the initial Bootloader**.
 The initial Bootloader Key can be used to provide Firmware upgrades without
 exposing the BK to the user and enable Firmware upgrades on untrusted Computers.
 The responsibility of the BK can be transferred to any other user but should be
-changed after exchanging it over a not trusted connection (Internet!).
+changed after exchanging it over an untrusted connection (Internet!).
 
 #### 3.2.4 Change the Bootloader Key
 You need to change the Bootloader Key from the Bootloader if no one was set yet.
@@ -365,7 +365,9 @@ TODO a long timeout/password is required here to not brute force all combination
 
 you (vendor) send the user a Firmware, a Firmware hash, a new encrypted password, 2 authentication challenges and 1 expected challenge answer.
 
-  the flashing tool sends the 2 challenges and the Bootloader has to answer both. with the 1st you can trust the Bootloader if you trust your pc. with the 2nd you can send the answer to the vendor and he can verify this challenge as well.
+
+
+the flashing tool sends the 2 challenges and the Bootloader has to answer both. with the 1st you can trust the Bootloader if you trust your pc. with the 2nd you can send the answer to the vendor and he can verify this challenge as well.
 
 The (symmetric key) should **not always** be used to authenticate the Bootloader at **every startup**, since the PC then always have the key stored, use the Firmware instead for this purpose. Also then it does not rely on the pc and is simpler to use.
 
@@ -389,20 +391,19 @@ Other option via UID (one time only)
 
 #### 3.3.1 Overview
 It is very important to **only upload trusted Firmware** from an untrusted PC
-while still keeping the **ability to create custom Firmwares** and dont lock
-out Firmware developers.
+while still keeping the **ability to create custom Firmwares**.
 
-The Firmware upgrade only accepts signed Firmware by the Bootloader Key.
-Signing the Firmware authenticates the Firmware (rather than the PC) to the
-Bootloader. This means you can create new Firmwares from a trusted PC and do
+The Firmware upgrade only accepts signed Firmwares by the Bootloader Key.
+Signing the Firmware authenticates the BK owner to the Bootloader, rather than the PC.
+This means you can create new Firmwares from a trusted PC and do
 **Firmware upgrades from an untrusted PC**. The vendor can provide Firmware
 upgrades without leaking the secret Bootloader Key.
 
 The vendor still can give away the initial Bootloader Key to the user if he
 requests it. Then the user can **compile and sign his own Firmwares** and play
-with the device. Then the user is responsible for further Firmware upgrades.
-After exchanging the initial Bootloader Key from the vendor the user should
-change it.
+with the device. The user is responsible for further Firmware upgrades.
+The initial Bootloader Key should be changed after exchanging
+it over an untrusted connection (Internet!).
 
 To prevent replay attacks (Firmware downgrades) the BK should be changed before
 each upload. This ensures that a new Bootloader Key was changed and an old
@@ -410,17 +411,7 @@ Firmware can not be used again. The new Firmware has to be signed with the new
 Bootloader Key. The vendor can force a BK change to upload a new Firmwares.
 Developers (who own the BK) do not have to change the BK for each upload.
 
-#### 3.3.2 Firmware Upgrade Sequence
-1. Receive signed Firmware checksums from the PC
-2. Verify the authenticity of the Firmware checksums
-3. Receive next Firmware page from the PC and verify the page checksum
-4. Abort if the checksum is invalid
-5. Flash the valid page
-6. Verify the whole Firmware checksum
-7. Abort and delete the whole Firmware if the checksum is invalid
-8. Write new Firmware identifier and new Firmware counter
-
-#### 3.3.3 Firmware Checksum (FW Checksum)
+#### 3.3.2 Firmware Checksum (FW Checksum)
 The Firmware Checksum is generated after uploading a new Firmware by the
 Bootloader and stored in the SBS. The PC can **verify the Firmware Integrity**
 with the Firmware Checksum and the Firmware Counter. The Firmware checksum is
@@ -433,25 +424,36 @@ used as part of the POST and the FID.
 
 If one checksum is valid all other checksums should be valid too. Otherwise
 there was an error while creating the checksums or the signing algorithm is
-insecure. If the uploading failed a flag will be set to let the Firmware notice
-the upload violation.
+insecure. If the uploading failed the FWVC get increased to let the Firmware notice
+the upload violation. After a successfull upload the FWC get increased instead and the FWVC will be cleared.
 
-TODO how to remove this flag, only authorized people should be able to?
+TODO hash algorithm: CBC-MAC
 
-TODO hash algorithm: crc32?
-
-#### 3.3.4 Firmware Counter (FWC)
+#### 3.3.3 Firmware Counter (FWC)
 The Bootloader keeps track of the number of Firmware uploads. This information
 is important to check if someone even tried to hack your device. The Firmware
-counter is part of the FID, stored inside the SBS and 32 bit large.
+counter is part of the FID, stored inside the SBS and 32 bit large. It can be
+read from the PC and the firmware (via BJT) at any time.
 
-#### 3.3.5 Firmware Violation Counter (FWVC)
+#### 3.3.4 Firmware Violation Counter (FWVC)
 The Firmware Violation Counter keeps track of the number of Firmware uploads
 that fail. This can happen if the signature or the checksums of the Firmware are
-wrong. The Firmware is able to read this value at any time and can use if for
-any user warnings. The FWVC is stored inside the SBS.
+wrong. It can be
+read from the PC and the firmware (via BJT) at any time.
+It can be used by the Firmware for user warnings.
+The FWVC is stored inside the SBS and 8 bit large. 
 
 TODO Required? Checksum needs to be excluded from this.
+
+#### 3.3.5 Firmware Upgrade Sequence
+1. Receive signed Firmware checksums from the PC
+2. Verify the authenticity of the Firmware checksums
+3. Receive next Firmware page from the PC and verify the page checksum
+4. Abort if the checksum is invalid
+5. Flash the valid page
+6. Verify the whole Firmware checksum
+7. Abort and delete the whole Firmware if the checksum is invalid
+8. Write new Firmware identifier and new Firmware counter
 
 ### 3.4 Firmware Authentication
 
