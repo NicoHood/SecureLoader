@@ -602,6 +602,13 @@ You may use an ISP to burn a new Bootloader, but this will **destroy any data** 
 * [All you need to know about AVR fuses](http://www.embedds.com/all-you-need-to-know-about-avr-fuses/)
 * [Engbedded Atmel AVR Fuse Calculator](http://www.engbedded.com/fusecalc/)
 
+### Other
+* http://jtxp.org/tech/tinysafeboot_en.htm
+* http://wiki.hacdc.org/index.php/Secure_bootloader
+* https://www.blackhat.com/html/bh-dc-10/bh-dc-10-archives.html
+* https://www.blackhat.com/presentations/bh-dc-10/Grand_Joe/BlackHat-DC-2010-Grand-HW-is-the-new-SW-slides.pdf
+* http://blog.ioactive.com/2007/11/atmega169p-quick-peek.html
+* http://blog.ioactive.com/2010/08/atmel-atmega2560-analysis-blackhat.html
 
 ## 6. Version History
 
@@ -730,6 +737,21 @@ Unstructured.
   * Forbit EEPROM reading from the Bootloader?
   * Should every Bootloader get a unique ID too? this way you can identify the device appart from the sticker on the backside.
 
+### Implementation requirements
+  - [ ] Bootloader should be accessible from a browser addon (USB HID)
+  - [ ] A command line tool for uploading is also essential for debugging
+  - [ ] Bootloader cannot be updated later, so it needs to be of high quality
+  - [ ] The bootloader should not touch EEPROM at all.
+  - [ ] Simple bootloader execution mechanism to enter bootloader mode.
+  - [ ] Firmware verification should be possible at any time
+  - [ ] The bootloader could keep track of the number of upgrades (check buffer overflow!)
+  - [ ] Verify the bootloader checksum before starting
+  - [ ] Verify the firmware checksum before running it
+  - [ ] Verify the fuse settings as well
+  - [ ] Use proper lock bits
+  - [ ] Add an user interface to download the firmware again
+  - [ ] Do not leave any trace in EEPROM or RAM
+  - [ ] Do a watchdog reset for application starting to keep all registers cleared
 
 
 ### TODO
