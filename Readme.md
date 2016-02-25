@@ -161,7 +161,7 @@ done by the user at every boot and needs to be
 if a new Bootloader was burned. To check the Firmwares authenticity you can
 always read the [checksum](#332-firmware-checksum-fw-checksum) from the
 Bootloader after you checked its
-[authencity](#21-bootloaderdevice-authenticity-protection). This way you can
+[authenticity](#21-bootloaderdevice-authenticity-protection). This way you can
 ensure that the Firmware was not manipulated.
 
 **Conclusion:
@@ -358,41 +358,31 @@ new (encrypted) BK.
 
 #### 3.2.5 Authenticate the Bootloader to the PC
 
-**Discussion: Is this feature essential?** TODO LINK
+**[Discussion: Is this feature essential?](#discussion)**
+TODO remove?
 
-The BK can be used to **verify the devices authenticity** at any time.
-This can be used for example after receiving the device from the vendor or after a [FID Hash](#343-firmware-id-hash-fid-hash) violation. Even a 1:1 copy of the device
+The BK can be used to
+**[verify the devices authenticity](#21-bootloaderdevice-authenticity-protection)**
+at any time. This can be used for example after receiving the device from the
+vendor or after a [FID Hash](#343-firmware-id-hash-fid-hash)
+[violation](#27-firmware-authenticity-protection). Even a 1:1 copy of the device
 could be noticed through the secret Bootloader Key.
-TODO just add a link and move information
 
-The Bootloader Key is used to **authenticate the Bootloader to the PC**.
-The PC sends a random challenge to the Bootloader which it has to hash with the BK.
-The Bootloaders integrity is then ensured, the Bootloader can be trusted.
-TODO a long timeout/password is required here to not brute force all combinations
+The Bootloader Key is used to **authenticate the Bootloader to the PC**. The PC
+sends a random challenge to the Bootloader which it has to hash with the BK. If
+it is correct, the Bootloaders authenticity is then ensured, the Bootloader can
+be trusted. A timeout is used to not [brute force](#23-brute-force-protection)
+all combinations.
 
-you (vendor) send the user a Firmware, a Firmware hash, a new encrypted password, 2 authentication challenges and 1 expected challenge answer.
+The vendor could send the user 2 challenges with 1 expected result. With the 1st
+answer you can trust the Bootloader if you trust your PC. With the 2nd you can
+send the answer to the vendor and he can verify this challenge as well. This way
+the vendor and the user can verify the challenges.
 
-
-
-the flashing tool sends the 2 challenges and the Bootloader has to answer both. with the 1st you can trust the Bootloader if you trust your pc. with the 2nd you can send the answer to the vendor and he can verify this challenge as well.
-
-The (symmetric key) should **not always** be used to authenticate the Bootloader at **every startup**, since the PC then always have the key stored, use the Firmware instead for this purpose. Also then it does not rely on the pc and is simpler to use.
-
-You could (and can) do this with the Bootloader.
-For usability it is very bad though, because you always need a PC with an app
-that checks the Bootloader integrity first and then Firmware.
-Also it might be considered to be a security risk to always use a PC
-with a symmetric key to authenticate the device.
-
-The concept is, that the Bootloader can be considered trusted. dont we need this then?
-
-**A Firmware bug could leak the [FID Hash](#343-firmware-id-hash-fid-hash) or UID. The only way to verify the device is the Bootloader Key.**
-
-Other option via UID (one time only)
-1) enter uid request code in the app, press enter
-2) check the returned code is the good one
-3) add mooltipass user
-4) remember hash
+The (symmetric key) should **not always** be used to authenticate the Bootloader
+at **every startup**, since the PC then always have the key stored, use the
+[Firmware instead](#34-firmware-authentication) for this purpose. Also then it
+does not rely on the PC and is simpler to use.
 
 ### 3.3 Firmware Upgrade
 
@@ -679,7 +669,7 @@ It does not hurt to include if enough flash is available
 #### Cons
 1. CRC or something else is required. AES Hash cannot be used, due to changing BK.
 2. Very unlikely that flash corrupts
-3. If the user wants to verify the firmware (integrity), the bootloader authencity also needs to be checked. Otherwise the feature could have been faked. So AES MAC could be used. This means this feature is only important for POST or very simple untrusted checks.
+3. If the user wants to verify the firmware (integrity), the bootloader authenticity also needs to be checked. Otherwise the feature could have been faked. So AES MAC could be used. This means this feature is only important for POST or very simple untrusted checks.
 
 #### Compromis
 It does not hurt to include if enough flash is available
@@ -751,4 +741,3 @@ Unstructured.
  * Add minimum RAM requirement if the Bootloader is finished.
  * Add implementation requirements checklist of all features
  * better line feeds (80chars)
- * add pgl text file
