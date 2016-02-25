@@ -35,10 +35,10 @@ It is **not final**. Contributions appreciated.
 * Uses USB HID Protocol
 * No special drivers required
 * Coded for AVR USB Microcontrollers
-* Optimized for 32u4
+* Optimized for [ATmega32u4](http://www.atmel.com/devices/atmega32u4.aspx)
 * Fits into 4kb Bootloader section TODO
-* Based on LUFA
-* Reusable [AES implementation](#316-crypto-algorithms)
+* Based on [LUFA](www.lufa-lib.org)
+* [Reusable](#313-bootloader-jump-table-bjt) [AES implementation](#316-crypto-algorithms)
 * [Open Source](#210-open-source-guarantee)
 
 ### 1.3 Attack Scenario
@@ -69,8 +69,6 @@ It is **not final**. Contributions appreciated.
 9. [Firmware Brick Protection](#29-firmware-brick-protection)
 10. [Open Source Guarantee](#210-open-source-guarantee)
 
-**TODO just link to technical details and dont duplicate information**
-
 ### 2.1 Bootloader/Device Authenticity Protection
 Each device comes with a unique [Bootloader Key](#32-bootloader-key-bk) that was
 [set by the vendor](#323-initial-bootloader-key) or
@@ -82,66 +80,63 @@ is ensured through the [Bootloader Key](#32-bootloader-key-bk).
 Techniques how the [Bootloader Key](#32-bootloader-key-bk) is kept secure are
 described below.
 
+You also want to check Bootloader authenticity if your
+[FID Hash](#343-firmware-id-hash-fid-hash) changed. If the Bootloader gets
+overwritten, the [FID Hash](#343-firmware-id-hash-fid-hash) will change. Even
+though the Bootloader can be authenticated manually the **Firmware should also
+authenticate itself it at every boot though the
+[FID Hash](#343-firmware-id-hash-fid-hash)**.
+
 ### 2.2 ISP Protection
 An ISP could be used to read the Bootloader and application flash content. This
 way one could burn a new faked Bootloader with a backdoor. ISP requires physical
-access to the PCB which can be visually noticed on some devices. Moreover on AVR
-the [Lock Bits](#363-lock-bits-explanation) prevent an
-[attacker](#13-attack-scenario) from reading the flash content. This way the
+access to the PCB which can be visually noticed on some devices.
+
+Moreover on AVR the [Lock Bits](#363-lock-bits-explanation) prevent an
+[attacker](#13-attack-scenario) from reading the flash content. Overwriting the
+Bootloader via ISP will also overwrite the [BK](#32-bootloader-key-bk) and the
+[FID Hash](#343-firmware-id-hash-fid-hash). This way the
 [Bootloaders authenticity](#21-bootloaderdevice-authenticity-protection) can be
 ensured.
 
-
-Furthermore there
-TODO FID, Bootloader authenticity, fuses
-Overwriting the Bootloader
-via ISP will also overwrite the [FID Hash](#343-firmware-id-hash-fid-hash) and the BK.
-ISP also requires physical access to the PCB which can be visually noticed on some devices.
-
-
-
-You also want to check Bootloader authenticity if your [FID Hash](#343-firmware-id-hash-fid-hash) changed. The
-Bootloader can authenticate itself to the PC via an authentication package. Even
-though the Bootloader can be authenticated manually the **Firmware should also
-authenticate itself it at every boot**.
-
-TODO link, TODO do we implement this?
-Or rather use UID?
-
 ### 2.3 Brute Force Protection
-TODO
-AES
-TIMEOUT/lock
-
+The [BK](#32-bootloader-key-bk) an
+[AES-256 symmetric key](#316-crypto-algorithms). To brute force a signed
+[Firmware upgrade](#26-unauthorized-firmware-upgradedowngrade-protection) you'd
+(currently) need too much time to crack it. Also there is a timeout after each
+failed upload and the
+[Firmware Violation Counter](#334-firmware-violation-counter-fwvc) will keep
+track of those. After 3 failed attempts the Bootloader has to be
+([manually](Compromised PC protection))
+restarted.
 
 ### 2.4 Compromised PC protection
-TODO
-Firmware upgrade/downgrade protection.
-Firmware checksum.
-Firmware ID Hash.
-Bootloader initiation protection via physical button press.
+A compromised PC (via virus) could not hack the Bootloader in any way. The
+[firmware upgrade](#26-unauthorized-firmware-upgradedowngrade-protection) is
+protected (unless the PC does not get the BK). Even then a new
+[FID Hash](#343-firmware-id-hash-fid-hash) will let the user notice a
+[Bootloaders authenticity](#21-bootloaderdevice-authenticity-protection)
+violation. Also the Bootloader [Recovery Mode](#315-recovery-mode) can only be
+entered via a physical button press.
 
 ### 2.5 Hacking the Bootloader from the Firmware Protection
-If someone is able to upload malicious Firmware to the device he needs access to
-the BK. If he has got the BK, he could simply fake and burn a new (fake)
-Bootloader instead. Therefor it is mostly useless to hack the Bootloader from
-the Firmware except if opening the device to ISP can not be visually noticed.
+If someone is able to
+[upload malicious Firmware](#26-unauthorized-firmware-upgradedowngrade-protection)
+to the device he needs access to the BK. If he has got the BK, he could simply
+fake and burn a new (fake) Bootloader instead. Therefor it is mostly useless to
+hack the Bootloader from the Firmware except if opening the device to
+[use ISP](#22-isp-protection) can be visually noticed.
 
-This attack scenario concentrates more on Bootloader hacking via Firmware
-vulnerabilities. Even if a Firmware vulnerability was found you can hardly hack
-the Bootloader. AVR use
+This hack can be prevented with storing the secrets into the
+[SBS](#312-secure-bootloader-section-sbs) and setting the correct
+[Lock Bits](#363-lock-bits-explanation).
+
+Therefor this attack scenario concentrates more on Bootloader hacking via
+Firmware vulnerabilities. Even if a Firmware vulnerability was found you can
+hardly hack the Bootloader. AVR use
 [Harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture), not
 [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture).
 Also you can do a Firmware upgrade to get rid of the security vulnerability.
-
-But the Bootloader prevents from
-[uploading unauthorized Firmware](#26-unauthorized-firmware-upgradedowngrade-protection)
- anyways. You first have to leak the Bootloader Key. And then also the Firmware
-authenticity protection will take account of this. Apart from this you should
-check and apply security Firmware upgrades regularly.
-
-
-TODO Does not work because of [SBS](#312-secure-bootloader-section-sbs)
 
 ### 2.6 Unauthorized Firmware Upgrade/Downgrade Protection
 Only signed Firmwares can be flashed with the Bootloader.
@@ -159,12 +154,18 @@ A compromised PC cannot initiate a Firmware upgrade.
 The Bootloader can only be started via a physical key press.
 
 ### 2.7 Firmware Authenticity Protection
-You will notice a Firmware change because the [FID Hash](#343-firmware-id-hash-fid-hash) has changed. This check
-has to be done by the user at every boot and needs to be coded in the Firmware.
-You will also notice this if a new Bootloader was burned. To check the Firmwares
-authenticity you can always read the checksum from Bootloader. This way you can
-ensure that the Bootloader did not manipulate the Firmware.
-TODO note the firmware is also responsible for this.
+You will notice a Firmware change because the
+[FID Hash](#343-firmware-id-hash-fid-hash) has changed. This check has to be
+done by the user at every boot and needs to be
+[coded in the Firmware](#34-firmware-authentication). You will also notice this
+if a new Bootloader was burned. To check the Firmwares authenticity you can
+always read the [checksum](#332-firmware-checksum-fw-checksum) from the
+Bootloader after you checked its
+[authencity](#21-bootloaderdevice-authenticity-protection). This way you can
+ensure that the Firmware was not manipulated.
+
+**Conclusion:
+The security also relies on the Firmware, not only the Bootloader!**
 
 ### 2.8 Flash Corruption Protection
 * [Brown-out detection (Fuse)](#36-fuse-settings)
@@ -255,13 +256,18 @@ Secrets are stored inside the protected Bootloader flash section:
 * Firmware Identifier
 * Firmware Violation Counter (32bit)
 
-They are stored in **special flash page** to avoid flash corruption of the
-Bootloader code. The Bootloaders flash is protected by fuses and though it is
-safe from being read via ISP. **TODO why is it secure from malicious Firmware?**
+They are stored in **special flash page** to avoid
+[flash corruption](#28-flash-corruption-protection) of the Bootloader code. The
+Bootloaders flash is protected by fuses and though it is safe from
+[being read via ISP](#22-isp-protection). The
+[Lock Bits](#363-lock-bits-explanation) also prevent the
+[Firmware from hacking the Bootloader code](#25-hacking-the-bootloader-from-the-firmware-protection).
+
 This secure Bootloader section is also excluded from the Bootloaders checksum.
 Typically the last Bootloader flash page is used to store the Bootloader
-settings. The Firmware has no direct (read/write) access to the data except the
-[BJT](#313-bootloader-jump-table-bjt).
+settings. The **Firmware has
+[no direct (read/write) access](#363-lock-bits-explanation)** to the data except
+via the [BJT](#313-bootloader-jump-table-bjt).
 
 #### 3.1.3 Bootloader Jump Table (BJT)
 The Bootloader Jump Table is used to call functions of the Bootloader from the
@@ -278,9 +284,9 @@ TODO
 
 #### 3.1.4 Power on Self Test (POST)
 The Bootloader checks the Bootloader and Firmware checksum at every boot to
-**prevent flash corruption**. Some parts of the [SBS](#312-secure-bootloader-section-sbs) are excluded from this check
-like the booloader checksum and the FWVC. Fuse and Lock bits will also be
-checked.
+**prevent flash corruption**. Some parts of the
+[SBS](#312-secure-bootloader-section-sbs) are excluded from this check like the
+booloader checksum and the FWVC. Fuse and Lock bits will also be checked.
 
 TODO we need to use CRC16/32 for this. Is it essential to do this at every boot?
 
@@ -296,8 +302,8 @@ After entering the recovery mode the user can TODO list
 
 #### 3.1.6 Crypto Algorithms
 AES-256 for encrypting
-AES-256 -MAC for signing
-[AES-256 -CBC-MAC for hashing](https://en.wikipedia.org/wiki/CBC-MAC)
+AES-256 MAC for signing
+[AES-256 CBC-MAC for hashing](https://en.wikipedia.org/wiki/CBC-MAC)
 [CRC](http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html) for POST TODO do we need this?
 
 TODO links
