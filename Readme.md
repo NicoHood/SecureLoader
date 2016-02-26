@@ -1,7 +1,7 @@
 # SecureLoader
 
 The idea is to create an **USB HID Bootloader** that can easily upgrade an AVR
-Firmware with even **increasing the security** of the device and its Firmware.
+Firmware and even **increase the security** of the device and its Firmware.
 The Bootloader **protects against potential backdoors and malicious Firmware
 upgrades**. This paper describes use cases, features, potential attacks and
 solutions to prevent them.
@@ -84,7 +84,7 @@ You also want to check Bootloader authenticity if your
 [FID Hash](#343-firmware-id-hash-fid-hash) changed. If the Bootloader gets
 overwritten, the [FID Hash](#343-firmware-id-hash-fid-hash) will change. Even
 though the Bootloader can be authenticated manually the **Firmware should also
-authenticate itself it at every boot though the
+authenticate itself at every boot though the
 [FID Hash](#343-firmware-id-hash-fid-hash)**.
 
 ### 2.2 ISP Protection
@@ -100,7 +100,7 @@ Bootloader via ISP will also overwrite the [BK](#32-bootloader-key-bk) and the
 ensured.
 
 ### 2.3 Brute Force Protection
-The [BK](#32-bootloader-key-bk) an
+The [BK](#32-bootloader-key-bk) has an
 [AES-256 symmetric key](#316-crypto-algorithms). To brute force a signed
 [Firmware upgrade](#26-unauthorized-firmware-upgradedowngrade-protection) you'd
 (currently) need too much time to crack it. Also there is a timeout after each
@@ -123,7 +123,7 @@ entered via a physical button press.
 If someone is able to
 [upload malicious Firmware](#26-unauthorized-firmware-upgradedowngrade-protection)
 to the device he needs access to the BK. If he has got the BK, he could simply
-fake and burn a new (fake) Bootloader instead. Therefor it is mostly useless to
+fake and burn a new (fake) Bootloader instead. Therefore it is mostly useless to
 hack the Bootloader from the Firmware except if opening the device to
 [use ISP](#22-isp-protection) can be visually noticed.
 
@@ -131,7 +131,7 @@ This hack can be prevented with storing the secrets into the
 [SBS](#312-secure-bootloader-section-sbs) and setting the correct
 [Lock Bits](#363-lock-bits-explanation).
 
-Therefor this attack scenario concentrates more on Bootloader hacking via
+Therefore this attack scenario concentrates more on Bootloader hacking via
 Firmware vulnerabilities. Even if a Firmware vulnerability was found you can
 hardly hack the Bootloader. AVR use
 [Harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture), not
@@ -465,7 +465,7 @@ TODO Required? Checksum needs to be excluded from this.
 
 #### 3.4.1 Overview
 Before the user uses the Firmware functions it should verify the Firmware
-authenticity. Therefor the [FID Hash](#343-firmware-id-hash-fid-hash) Hash is used and should be accepted by the user.
+authenticity. Therefore the [FID Hash](#343-firmware-id-hash-fid-hash) Hash is used and should be accepted by the user.
 If the [FID Hash](#343-firmware-id-hash-fid-hash) is different the Firmware was upgraded or otherwise modified.
 
 1. Start the Firmware
@@ -726,7 +726,7 @@ Unstructured.
   * It is important that a brute forcing the unlock is impossible
   * verifying the Firmware after receiving the package should be required or at least noticed somehow.
   * The concept is, that the Bootloader can be considered trusted
-  * Therefor the **Firmware** needs to **authenticate itself** at **every start**. This can be done before any USB communication (fo the Firmware) was started.
+  * Therefore the **Firmware** needs to **authenticate itself** at **every start**. This can be done before any USB communication (fo the Firmware) was started.
   * we need to ensure that a fake Firmware has no access to the Bootloader.
   * A modified Bootloader could not check the Firmware integrity (checksum) reliable. There should be no way to modify the Bootloader by anyone.
   * maybe use something bigger than the 32u4?
