@@ -47,7 +47,7 @@ It is **not final**. Contributions appreciated.
 * The AVR is programmed with the correct fuses.
 * The initial password is kept secure by the vendor until the user requests it.
 * The security also relies on the Firmware (Firmware authenticity!).
-* The Bootloader Key is changed after every Firmware upgrade.
+* The Bootloader Key is changed before every Firmware upgrade.
 
 ##### Worst Case Scenario (might differ to the Real World):
 * The Firmware handles secure information that a Firmware backdoor could leak.
