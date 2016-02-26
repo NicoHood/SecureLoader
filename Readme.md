@@ -176,7 +176,7 @@ The security also relies on the Firmware, not only the Bootloader!**
 If you upload a bricked Firmware it is always possible to enter the Bootloader
 [Recovery Mode](#315-recovery-mode) again. The Bootloader does **not rely on any
 part of the Firmware**. Then you can upload another Firmware instead and
-continue testing. You should not lose you BK to be able to upload another
+continue testing. You should not lose your BK to be able to upload another
 Firmware again. Also see
 [Flash Corruption Protection](#28-flash-corruption-protection)
 
