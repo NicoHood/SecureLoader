@@ -178,7 +178,7 @@ void aes256CtrEncrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
         // if we need new cipherstream, calculate it
         if(ctx->cipherstreamAvailable == 0)
         {
-            int j;
+            uint8_t j;
             for(j = 0; j < 16; j++)
             {
                 ctx->cipherstream[j] = ctx->ctr[j];
@@ -237,4 +237,53 @@ void aes256CtrClean(aes256CtrCtx_t *ctx)
 	{
 		*ptr++ = 0;
 	}
+}
+
+
+/*!	\fn 	aes256CbcMacInit(aes256CbcMacCtx_t *ctx)
+*	\brief	Init/Clear CBC-MAC (IV)
+*
+*   \param  ctx - context
+*   \param  key - pointer to key, size must be 32 bytes
+*/
+void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key)
+{
+  // initialize key schedule inside CTX
+	aes256_init(key, &(ctx->aesCtx));
+
+  // Zero bytes of ctx->cbcMac (IV).
+  uint8_t i;
+	for (i=0; i<AES256_CBC_LENGTH; i++)
+	{
+		ctx->cbcMac[i] = 0x00;
+	}
+}
+
+
+/*!	\fn 	aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
+*	\brief	Update CBC-MAC with the input data
+*
+*   \param  ctx - context
+*   \param  data - pointer to data
+*   \param  dataLen - size of data
+*/
+void aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
+{
+  uint16_t i;
+
+  // Check if dataLen is a multiple of AES256_CBC_LENGTH
+  if(dataLen % AES256_CBC_LENGTH != 0)
+  {
+    return;
+  }
+
+  // Loop will update cbcMac for each block
+  for (i=0; i<dataLen; i+=AES256_CBC_LENGTH)
+  {
+    // XOR cbcMac with data
+    aesXorVectors(data + i, ctx->cbcMac, AES256_CBC_LENGTH);
+
+    // Encrypt next block
+    aes256_enc(ctx->cbcMac, &(ctx->aesCtx));
+  }
 }

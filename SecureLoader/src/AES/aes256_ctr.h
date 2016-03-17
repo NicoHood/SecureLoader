@@ -27,6 +27,10 @@
 #ifndef __AES_256_CTR_H__
 #define __AES_256_CTR_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include "aes.h"
 
@@ -55,5 +59,26 @@ void aes256CtrClean(aes256CtrCtx_t *ctx);
 
 // DEFINES
 #define AES256_CTR_LENGTH   16
+
+
+// DEFINES
+#define AES256_CBC_LENGTH   16
+
+/*! \struct aes256CbcMacCtx_t
+*   \brief CTX data type
+*/
+typedef struct
+{
+	aes256_ctx_t aesCtx; /*!< aes256 context */
+	uint8_t cbcMac[AES256_CBC_LENGTH]; /*!< the value of the IV/cbcMac */
+}aes256CbcMacCtx_t;
+
+// CBC-MAC functions
+void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key);
+void aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
