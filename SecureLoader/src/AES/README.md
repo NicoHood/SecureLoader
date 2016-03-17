@@ -41,7 +41,7 @@ How to use the library? how to work  with it ? As easy as it sounds, you only ha
 void aes256_test(void)
 {
     // aes256 is 32 byte key
-    uint8_t key[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20, 21,22,23,24,25,26,27,28,29,30,31};
+    uint8_t key[32] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
 
     // aes256 is 16 byte data size
     uint8_t data[16] = "text to encrypt";
@@ -53,18 +53,18 @@ void aes256_test(void)
     aes256_init(key, &ctx);
 
     // Encrypt data
-    // "text to encrypt" (ascii) -> '9798D10A63E4E167122C4C07AF49C3A9'(hexa)
+    // "text to encrypt" (ascii) -> '9798D10A63E4E167122C4C07AF49C3A9'(hex)
     aes256_enc(data, &ctx);
 
     // Decrypt data
-    // '9798D10A63E4E167122C4C07AF49C3A9'(hexa) -> "text to encrypt" (ascii)
+    // '9798D10A63E4E167122C4C07AF49C3A9'(hex) -> "text to encrypt" (ascii)
     aes256_dec(data, &ctx);
 }
 ```
 
 2- Testing the library using nessie test vectors
 ------------------------------------------------
-After downloading a third party library or resource you must ensure the library performs the function as well as it is claimed. So to satisfy our paranoia against any bug or error with the library, we have checked the encyrption and decryption using different test vectors, called Nessie Test Vectors. There are 8 different sets of test vectors, we have checked AES256 against all.
+After downloading a third party library or resource you must ensure the library performs the function as well as it is claimed. So to satisfy our paranoia against any bug or error with the library, we have checked the encryption and decryption using different test vectors, called Nessie Test Vectors. There are 8 different sets of test vectors, we have checked AES256 against all.
 
 To test AES256 using nessie vectors, we have created a file called aes256_nessie_test.c. This file outputs the results of nessie test into UART, USB CDC or whatever function you want. You only have to initialize the function pointer to print the output where you want.
 
@@ -96,7 +96,7 @@ void main(void)
 
 Nessie test vectors and output are located in <a href="https://www.cosic.esat.kuleuven.be/nessie/testvectors">https://www.cosic.esat.kuleuven.be/nessie/testvectors</a> Block Cipher -> Rijndael -> key size 256.
 
-The output of all nessieTest functions are formatted in the same way as the file <b>aes256_nessie_test.txt</b>, so... you must save the output (using cutecom or similar hyperterminal program) into a file and check the differences between your file and <b>aes256_nessie_test.txt</b> using a diff viewer.
+The output of all nessieTest functions are formatted in the same way as the file <b>aes256_nessie_test.txt</b>, so... you must save the output (using custom or similar hyperterminal program) into a file and check the differences between your file and <b>aes256_nessie_test.txt</b> using a diff viewer.
 
 3- CTR block encryption
 -----------------------
