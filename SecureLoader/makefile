@@ -18,9 +18,9 @@ F_CPU        = 16000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = s
 TARGET       = BootloaderHID
-SRC          = $(TARGET).c Descriptors.c $(LUFA_SRC_USB)
+SRC          = $(TARGET).c Descriptors.c $(LIB_SRC) $(LUFA_SRC_USB)
 LUFA_PATH    = ../lufa/LUFA
-CC_FLAGS     = -DUSE_LUFA_CONFIG_HEADER -IConfig/
+CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/
 LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET)
 
 # Flash size and bootloader section sizes of the target, in KB. These must
@@ -28,6 +28,13 @@ LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET)
 # device's fuses.
 FLASH_SIZE_KB        := 32
 BOOT_SECTION_SIZE_KB := 4
+
+OPTIONS += -DVENDORID=0x03EB
+OPTIONS += -DPRODUCTID=0x2067
+
+# Additional source files from libraries
+LIB_SRC += src/AES/aes.c
+LIB_SRC += src/AES/aes256_ctr.c
 
 # Bootloader address calculation formulas
 # Do not modify these macros, but rather modify the dependent values above.
