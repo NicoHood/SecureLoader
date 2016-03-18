@@ -139,21 +139,48 @@ void EVENT_USB_Device_ControlRequest(void)
 	/* Process HID specific control requests */
 	switch (USB_ControlRequest.bRequest)
 	{
+		// TODO get report for checksum/authentification?
 		case HID_REQ_SetReport:
+			// TODO setup.wValueH for feature/out/in report
+			// TODO check recv size == struct size
 			Endpoint_ClearSETUP();
 
-			/* Wait until the command has been sent by the host */
-			while (!(Endpoint_IsOUTReceived()));
+			// Chunk of data that was sent by the host
+			static union{
+		    uint8_t raw[0];
+				struct{
+					uint16_t PageAddress;
+					uint16_t pageBuff[SPM_PAGESIZE/2];
+					uint8_t cbcMac[AES256_CBC_LENGTH];
+				}
+		  }chunk;
+
+			/* Store the data in a temporary buffer */
+			for (size_t i = 0; i < sizeof(chunk); i++)
+		  {
+		    /* Check if endpoint is empty - if so clear it and wait until ready for next packet */
+		    if (!(Endpoint_BytesInEndpoint()))
+		    {
+		      Endpoint_ClearOUT();
+		      while (!(Endpoint_IsOUTReceived()));
+		    }
+
+		    /* Get next data byte */
+		    chunk.raw[i] = Endpoint_Read_8();
+		  }
+
+			/* Acknowledge reading to the host */
+			Endpoint_ClearOUT();
 
 			/* Read in the write destination address */
 			#if (FLASHEND > 0xFFFF)
-			uint32_t PageAddress = ((uint32_t)Endpoint_Read_16_LE() << 8);
+			uint32_t PageAddress = ((uint32_t)chunk.PageAddress << 8);
 			#else
-			uint16_t PageAddress = Endpoint_Read_16_LE();
+			uint16_t PageAddress = chunk.PageAddress;
 			#endif
 
 			/* Check if the command is a program page command, or a start application command */
-			#if (FLASHEND > 0xFFFF)
+			#if (FLASHEND > USHRT_MAX)
 			if ((uint16_t)(PageAddress >> 8) == COMMAND_STARTAPPLICATION)
 			#else
 			if (PageAddress == COMMAND_STARTAPPLICATION)
@@ -161,38 +188,12 @@ void EVENT_USB_Device_ControlRequest(void)
 			{
 				RunBootloader = false;
 			}
-			else
-			{
-				/* Erase the given FLASH page, ready to be programmed */
-				boot_page_erase(PageAddress);
-				boot_spm_busy_wait();
-
-				/* Write each of the FLASH page's bytes in sequence */
-				for (uint8_t PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++)
-				{
-					/* Check if endpoint is empty - if so clear it and wait until ready for next packet */
-					if (!(Endpoint_BytesInEndpoint()))
-					{
-						Endpoint_ClearOUT();
-						while (!(Endpoint_IsOUTReceived()));
-					}
-
-					/* Write the next data word to the FLASH page */
-					boot_page_fill(PageAddress + ((uint16_t)PageWord << 1), Endpoint_Read_16_LE());
-				}
-
-				/* Write the filled FLASH page to memory */
-				boot_page_write(PageAddress);
-				boot_spm_busy_wait();
-
-				/* Re-enable RWW section */
-				boot_rww_enable();
+			else{
+				BootloaderAPI_EraseFillWritePage(PageAddress, chunk.pageBuff);
 			}
 
-			Endpoint_ClearOUT();
-
+			// Acknowledge SetReport request
 			Endpoint_ClearStatusStage();
 			break;
 	}
 }
-

@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 			buf[1] = (addr >> 16) & 255;
 		}
 		ihex_get_data(addr, block_size, buf + 2);
-		r = teensy_write(buf, block_size + 2, first_block ? 3.0 : 0.25);
+		r = teensy_write(buf, block_size + 2 + 16, first_block ? 3.0 : 0.25);
 		if (!r) die("error writing to Teensy\n");
 		first_block = 0;
 	}
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
 		buf[0] = 0xFF;
 		buf[1] = 0xFF;
 		memset(buf + 2, 0, sizeof(buf) - 2);
-		teensy_write(buf, block_size + 2, 0.25);
+		teensy_write(buf, block_size + 2 + 16, 0.25);
 	}
 	teensy_close();
 	return 0;

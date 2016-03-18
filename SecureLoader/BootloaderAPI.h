@@ -30,46 +30,33 @@
 
 /** \file
  *
- *  Header file for BootloaderHID.c.
+ *  Header file for BootloaderAPI.c.
  */
 
-#ifndef _BOOTLOADERHID_H_
-#define _BOOTLOADERHID_H_
+#ifndef _BOOTLOADER_API_H_
+#define _BOOTLOADER_API_H_
 
 	/* Includes: */
 		#include <avr/io.h>
-		#include <avr/wdt.h>
 		#include <avr/boot.h>
-		#include <avr/power.h>
-		#include <avr/interrupt.h>
 		#include <stdbool.h>
 
-		#include "Descriptors.h"
-		#include "src/AES/aes256_ctr.h"
-		#include "BootloaderAPI.h"
+		#include <LUFA/Common/Common.h>
 
-		#include <LUFA/Drivers/USB/USB.h>
-		#include <LUFA/Platform/Platform.h>
-
-	/* Preprocessor Checks: */
-		#if !defined(__OPTIMIZE_SIZE__)
-			#error This bootloader requires that it be optimized for size, not speed, to fit into the target device. Change optimization settings and try again.
+		#if (FLASHEND > USHRT_MAX)
+		typedef uint32_t address_size_t;
+		#else
+		typedef uint16_t address_size_t;
 		#endif
 
-	/* Macros: */
-		/** Bootloader special address to start the user application */
-		#define COMMAND_STARTAPPLICATION   0xFFFF
-
-		/** Magic bootloader key to unlock forced application start mode. */
-		#define MAGIC_BOOT_KEY             0xDC42
-
 	/* Function Prototypes: */
-		static void SetupHardware(void);
-
-		void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
-
-		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_UnhandledControlRequest(void);
+		void    BootloaderAPI_ErasePage(const address_size_t Address);
+		void    BootloaderAPI_WritePage(const address_size_t Address);
+		void    BootloaderAPI_FillWord(const address_size_t Address, const uint16_t Word);
+		void    BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words);
+		uint8_t BootloaderAPI_ReadSignature(const uint16_t Address);
+		uint8_t BootloaderAPI_ReadFuse(const uint16_t Address);
+		uint8_t BootloaderAPI_ReadLock(void);
+		void    BootloaderAPI_WriteLock(const uint8_t LockBits);
 
 #endif
-
