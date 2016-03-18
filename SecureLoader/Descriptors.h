@@ -59,9 +59,9 @@
 		 *  interface from other descriptors.
 		 */
 		enum InterfaceDescriptors_t
-		{
-			INTERFACE_ID_Printer = 0, /**< Printer interface descriptor ID */
-		};
+ 		{
+ 			INTERFACE_ID_GenericHID = 0, /**< GenericHID interface descriptor ID */
+ 		};
 
 	/* Macros: */
 		/** Endpoint address of the HID data IN endpoint. */
