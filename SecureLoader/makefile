@@ -20,14 +20,18 @@ OPTIMIZATION = s
 TARGET       = BootloaderHID
 SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c BootloaderAPITable.S $(LIB_SRC) $(LUFA_SRC_USB)
 LUFA_PATH    = ../lufa/LUFA
-CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET)
-LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS)
+CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET) -flto -fuse-linker-plugin
+LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS) -flto -fuse-linker-plugin
 
 # Flash size and bootloader section sizes of the target, in KB. These must
 # match the target's total FLASH size and the bootloader size set in the
 # device's fuses.
 FLASH_SIZE_KB        := 32
 BOOT_SECTION_SIZE_KB := 4
+
+# Gcc settings
+COMPILER_PATH =~/bin/pkg-x86_64-pc-linux-gnu_53latest/bin/
+C_INCLUDE_PATH=./lib/
 
 OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067
@@ -49,6 +53,14 @@ BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_trampolines, Boot
 BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   32)
 BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
 
+# Avrdude settings
+AVRDUDE_PORT       = /dev/ttyACM1
+AVRDUDE_PROGRAMMER = stk500v1
+AVRDUDE_FLAGS      = -b 19200
+#	avrdude -patmega32u4 -cstk500v1 -P/dev/ttyACM1 -b19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
+#	avrdude -patmega32u4 -cstk500v1 -P/dev/ttyACM1 -b19200 -Uflash:w:./$(TARGET).hex:i -Ulock:w:0x2F:m
+
+
 # Default target
 all:
 
@@ -61,9 +73,9 @@ include $(LUFA_PATH)/Build/lufa_doxygen.mk
 include $(LUFA_PATH)/Build/lufa_avrdude.mk
 include $(LUFA_PATH)/Build/lufa_atprogram.mk
 
-avrdude:
-	avrdude -patmega32u4 -cstk500v1 -P/dev/ttyACM1 -b19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
-	avrdude -patmega32u4 -cstk500v1 -P/dev/ttyACM1 -b19200 -Uflash:w:./$(TARGET).hex:i -Ulock:w:0x2F:m
-
 upload:
-	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 ./HostLoaderApp/blink/blink1000.hex
+	cd HostLoaderApp && $(MAKE) && cd ..
+	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v ./HostLoaderApp/blink/blink1000.hex
+
+uploadfast:
+	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v ./HostLoaderApp/blink/blink100.hex
