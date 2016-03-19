@@ -75,6 +75,10 @@ include $(LUFA_PATH)/Build/lufa_doxygen.mk
 include $(LUFA_PATH)/Build/lufa_avrdude.mk
 include $(LUFA_PATH)/Build/lufa_atprogram.mk
 
+noreboot:
+	cd HostLoaderApp && $(MAKE) && cd ..
+	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v -n ./HostLoaderApp/blink/blink1000.hex
+
 upload:
 	cd HostLoaderApp && $(MAKE) && cd ..
 	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v ./HostLoaderApp/blink/blink1000.hex
