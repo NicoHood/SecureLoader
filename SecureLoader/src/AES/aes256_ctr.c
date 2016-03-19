@@ -34,7 +34,7 @@
 *   \param  src - source of xor data
 *   \param  nbytes - number of bytes to be xored between dest and src
 */
-void aesXorVectors(uint8_t *dest, uint8_t *src, uint8_t nbytes)
+void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes)
 {
     while(nbytes--)
     {
@@ -260,24 +260,22 @@ void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key)
 }
 
 
-/*!	\fn 	aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
+/*!	\fn 	aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
 *	\brief	Update CBC-MAC with the input data
 *
 *   \param  ctx - context
 *   \param  data - pointer to data
 *   \param  dataLen - size of data
 */
-void aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
+void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
 {
-  uint16_t i;
-
   // Check if dataLen is a multiple of AES256_CBC_LENGTH
-  if(dataLen % AES256_CBC_LENGTH != 0)
-  {
+  if(dataLen % AES256_CBC_LENGTH != 0) {
     return;
   }
 
   // Loop will update cbcMac for each block
+  uint16_t i;
   for (i=0; i<dataLen; i+=AES256_CBC_LENGTH)
   {
     // XOR cbcMac with data
@@ -286,4 +284,43 @@ void aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
     // Encrypt next block
     aes256_enc(ctx->cbcMac, &(ctx->aesCtx));
   }
+}
+
+
+/*!	\fn 	bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, uint8_t *cbcMac)
+*	\brief	Compare if CBC-MAC matches with the input data
+*
+*   \param  ctx - context
+*   \param  cbcMac - pointer to cbcMac, size must be 16 bytes
+*/
+bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac)
+{
+  // Check if CBC-MAC matches
+  uint8_t i = 0;
+  for(i = 0; i < AES256_CBC_LENGTH; i++){
+    if(ctx->cbcMac[i] != cbcMac[i]){
+      return true;
+    }
+  }
+  return false;
+}
+
+
+/*!	\fn 	bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac)
+*	\brief	Init, Update and Compare CBC-MAC with the input data
+*
+*   \param  ctx - context
+*   \param  key - pointer to key, size must be 32 bytes
+*   \param  data - pointer to data
+*   \param  dataLen - size of data
+*   \param  cbcMac - pointer to cbcMac, size must be 16 bytes
+*/
+bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac)
+{
+  // Save key and initialization vector inside context
+  // Calculate CBC-MAC
+  // Compare CBC-Mac
+  aes256CbcMacInit(ctx, key);
+  aes256CbcMacUpdate(ctx, data, dataLen);
+  return aes256CbcMacCompare(ctx, cbcMac);
 }

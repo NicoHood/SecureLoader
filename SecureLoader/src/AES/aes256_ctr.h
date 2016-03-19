@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "aes.h"
 
 /*! \struct aes256CtrCtx_t
@@ -47,7 +48,7 @@ typedef struct
 
 // USEFUL functions
 void aesIncrementCtr(uint8_t *ctr, uint8_t len);
-void aesXorVectors(uint8_t *dest, uint8_t *src, uint8_t nbytes);
+void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes);
 int8_t aesCtrCompare(uint8_t *ctr1, uint8_t *ctr2, uint8_t len);
 
 // STREAM CTR functions
@@ -75,7 +76,9 @@ typedef struct
 
 // CBC-MAC functions
 void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key);
-void aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen);
+void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen);
+bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac);
+bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac);
 
 #ifdef __cplusplus
 }

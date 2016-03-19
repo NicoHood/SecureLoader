@@ -267,22 +267,25 @@ void EVENT_USB_Device_ControlRequest(void)
 				  // Save key and initialization vector inside context
 					// Calculate CBC-MAC
 				  aes256CbcMacInit(&ctx, BootloaderKey);
-					aes256CbcMac(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac));
+					aes256CbcMacUpdate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac));
 
-					// Check if CBC-MAC matches
-					uint8_t i = 0;
-					for(i = 0; i < sizeof(ctx.cbcMac); i++){
-						if(ProgrammFlashPage.cbcMac[i] != ctx.cbcMac[i]){
-							break;
-						}
-					}
-
-					// Only write data if CBC-MAC is correct
-					if(i != sizeof(ctx.cbcMac)){
+					// Only write data if CBC-MAC matches
+					if(!aes256CbcMacCompare(&ctx, ProgrammFlashPage.cbcMac)){
 						// TODO else error/timeout
 						//uart_putchars("CBCERR\r\n");
 						return;
 					}
+
+					// Only write data if CBC-MAC matches
+					// if(!aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
+					// 																	ProgrammFlashPage.raw,
+					// 																	sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac),
+					// 																	ProgrammFlashPage.cbcMac)
+					// {
+					// 	// TODO else error/timeout
+					// 	//uart_putchars("CBCERR\r\n");
+					// 	return;
+					// }
 
 					//uart_putchars("Programming\r\n");
 					BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage.PageData);
@@ -293,13 +296,14 @@ void EVENT_USB_Device_ControlRequest(void)
 				}
 			}
 			else if(length == sizeof(changeBootloaderKey)){
+				return; //TODO remove
 				//uart_putchars("NewBKe\r\n");
 				Endpoint_Read_And_Clear_Control_Stream_LE(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
-				return;
+
 				// Save key and initialization vector inside context
 				// Calculate CBC-MAC
 				aes256CbcMacInit(&ctx, BootloaderKey);
-				aes256CbcMac(&ctx, changeBootloaderKey.raw, sizeof(changeBootloaderKey));
+				aes256CbcMacUpdate(&ctx, changeBootloaderKey.raw, sizeof(changeBootloaderKey));
 
 				// Check if CBC-MAC matches
 				uint8_t i = 0;
