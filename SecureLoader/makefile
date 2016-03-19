@@ -30,7 +30,7 @@ FLASH_SIZE_KB        := 32
 BOOT_SECTION_SIZE_KB := 4
 
 # Gcc settings
-COMPILER_PATH =~/bin/pkg-x86_64-pc-linux-gnu_53latest/bin/
+COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
 C_INCLUDE_PATH=./lib/
 
 OPTIONS += -DVENDORID=0x03EB

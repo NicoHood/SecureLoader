@@ -1,3 +1,6 @@
 [submodule "lufa"]
 	path = lufa
 	url = https://github.com/abcminiuser/lufa.git
+[submodule "AVR-Development-Environment-Script"]
+	path = AVR-Development-Environment-Script
+	url = https://github.com/NicoHood/AVR-Development-Environment-Script.git
