@@ -122,6 +122,33 @@ void EVENT_USB_Device_ConfigurationChanged(void)
 	Endpoint_ConfigureEndpoint(HID_IN_EPADDR, EP_TYPE_INTERRUPT, HID_IN_EPSIZE, 1);
 }
 
+// Chunk of data that was sent by the host
+static union{
+	uint8_t raw[0];
+	struct{
+		uint16_t PageAddress; // TODO initialize to zero
+		union{
+			uint8_t USBBuffer[0];
+			struct{
+				uint16_t pageBuff[SPM_PAGESIZE/2];
+				uint8_t cbcMac[AES256_CBC_LENGTH];
+			}; //TODO name
+			struct{
+				uint8_t key[32];
+				uint8_t cbcMac[AES256_CBC_LENGTH];
+			}newKey;
+		};
+	};
+}chunk;
+
+static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
+										 0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b,
+										 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+									 };
+
+// Declare aes256 context variable
+static aes256CbcMacCtx_t ctx;
+
 /** Event handler for the USB_ControlRequest event. This is used to catch and process control requests sent to
  *  the device from the USB host before passing along unhandled control requests to the library for processing
  *  internally.
@@ -135,24 +162,39 @@ void EVENT_USB_Device_ControlRequest(void)
 		return;
 	}
 
+	// TODO check host to device, device to host?
+
+	// Differentiate between Out and Feature report (in and reserved ignored)
+	uint8_t reportType = (USB_ControlRequest.wValue >> 8);
+	uint16_t length = USB_ControlRequest.wLength;
+
 	/* Process HID specific control requests */
 	switch (USB_ControlRequest.bRequest)
 	{
-		// TODO get report for checksum/authentification?
 		case HID_REQ_SetReport:
-			// TODO setup.wValueH for feature/out/in report
-			// TODO check recv size == struct size
-			Endpoint_ClearSETUP();
+		{
+			// Set PageAddress via out report
+			if(reportType == HID_REPORT_ITEM_Out){
+				if(length != sizeof(chunk.PageAddress))
+					return;
 
-			// Chunk of data that was sent by the host
-			static union{
-		    uint8_t raw[0];
-				struct{
-					uint16_t PageAddress;
-					uint16_t pageBuff[SPM_PAGESIZE/2];
-					uint8_t cbcMac[AES256_CBC_LENGTH];
-				};
-		  }chunk;
+				// TODO move this check to the other function?
+				uint16_t PageAddress = Endpoint_Read_16_LE();
+				if (PageAddress < BOOT_START_ADDR){
+					chunk.PageAddress = PageAddress;
+				}
+				// else error, wrong page address -> stall to notice the app
+			}
+
+			// Read in data via feature report
+			if(reportType != HID_REPORT_ITEM_Feature)
+				return;
+
+			// TODO check recv size == struct size
+			if(length != sizeof(chunk))
+				return;
+
+			Endpoint_ClearSETUP();
 
 			/* Store the data in a temporary buffer */
 			for (size_t i = 0; i < sizeof(chunk); i++)
@@ -171,6 +213,9 @@ void EVENT_USB_Device_ControlRequest(void)
 			/* Acknowledge reading to the host */
 			Endpoint_ClearOUT();
 
+			// TODO alternative
+			//Endpoint_Read_Control_Stream_LE(&chunk.raw, sizeof(chunk));
+
 			/* Read in the write destination address */
 			#if (FLASHEND > 0xFFFF)
 			uint32_t PageAddress = ((uint32_t)chunk.PageAddress << 8);
@@ -188,15 +233,8 @@ void EVENT_USB_Device_ControlRequest(void)
 				RunBootloader = false;
 			}
 			// Do not overwrite the bootloader or write out of bounds
-			else if (PageAddress < BOOT_START_ADDR){
-				static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
-	                           0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b,
-	                           0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
-	                         };
-
-			  // Declare aes256 context variable
-				static aes256CbcMacCtx_t ctx;
-
+			else if (PageAddress < BOOT_START_ADDR)
+			{
 			  // Save key and initialization vector inside context
 			  aes256CbcMacInit(&ctx, key);
 
@@ -221,5 +259,41 @@ void EVENT_USB_Device_ControlRequest(void)
 			// Acknowledge SetReport request
 			Endpoint_ClearStatusStage();
 			break;
+		}
+
+		// TODO get report for checksum/authentification?
+		case HID_REQ_GetReport:
+		{
+			// Read in data via feature report
+			if(reportType != HID_REPORT_ITEM_Feature)
+				return;
+
+			uint16_t PageAddress = chunk.PageAddress;
+			if (!(PageAddress < BOOT_START_ADDR)){
+				return;
+			}
+
+			/* Read the next FLASH byte from the current FLASH page */
+			for (uint8_t PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++){
+				#if (FLASHEND > USHRT_MAX)
+				chunk.pageBuff[PageWord] = pgm_read_word_far(PageWord);
+				#else
+				chunk.pageBuff[PageWord] = pgm_read_word(PageWord);
+				#endif
+			}
+
+			// Save key and initialization vector inside context
+			aes256CbcMacInit(&ctx, key);
+
+			// Calculate CBC-MAC
+			aes256CbcMac(&ctx, chunk.raw, sizeof(chunk.PageAddress) + sizeof(chunk.pageBuff));
+
+			// Send the firmware flash to the PC
+			// TODO also send CBC-MAC?
+			for (size_t i = 0; i < sizeof(chunk); i++){
+
+			}
+			break;
+		}
 	}
 }

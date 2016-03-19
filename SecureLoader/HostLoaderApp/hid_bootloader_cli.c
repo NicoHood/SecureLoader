@@ -284,8 +284,13 @@ int teensy_write(void *buf, int len, double timeout)
 	int r;
 
 	if (!libusb_teensy_handle) return 0;
-	r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0200, 0, (char *)buf,
-		len, (int)(timeout * 1000.0));
+	// 0x0100 out, 0x0200 feature
+	r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0100, 0, (char *)buf,
+		2, (int)(timeout * 1000.0));
+	// if(r >= 0){
+		r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0200, 0, (char *)buf,
+			len, (int)(timeout * 1000.0));
+	//}
 	if (r < 0) return 0;
 	return 1;
 }
