@@ -157,13 +157,14 @@ int main(int argc, char **argv)
 	aes256CbcMacInit(&ctx, key);
 
 	for (addr = 0; addr < code_size; addr += block_size) {
+		printf_verbose("\n%d", addr);
 		if (addr > 0 && !ihex_bytes_within_range(addr, addr + block_size - 1)) {
 			// don't waste time on blocks that are unused,
 			// but always do the first one to erase the chip
-			continue;
+			printf_verbose(" Empty block!");
+			//continue;
 		}
 		//printf_verbose(".");
-		printf_verbose("\n%d", addr);
 		if (code_size < 0x10000) {
 			buf[0] = addr & 255;
 			buf[1] = (addr >> 8) & 255;
@@ -176,7 +177,7 @@ int main(int argc, char **argv)
 
 		// Calculate and save CBC-MAC
 		aes256CbcMac(&ctx, buf, block_size + 2);
-		memcpy(buf + block_size + 2, ctx.cbcMac[i], AES256_CBC_LENGTH)
+		memcpy(buf + block_size + 2, ctx.cbcMac, AES256_CBC_LENGTH);
 
 		r = teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, first_block ? 3.0 : 0.25);
 		if (!r) die("error writing to Teensy\n");
