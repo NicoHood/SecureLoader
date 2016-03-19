@@ -105,7 +105,7 @@ void Application_Jump_Check(void)
   wdt_disable();
 
 	/* If the reset source was the bootloader and the key is correct, clear it and jump to the application */
-	if ((mcusr_mirror & (1 << WDRF)) && (MagicBootKey == MAGIC_BOOT_KEY))
+	if ((mcusr_mirror & (1 << WDRF)) && (MagicBootKey == MAGIC_BOOT_KEY) || (mcusr_mirror & (1 << PORF)))
 	{
 		/* Clear the boot key and jump to the user application */
 		MagicBootKey = 0;
