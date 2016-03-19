@@ -49,19 +49,22 @@ static bool RunBootloader = true;
 uint16_t MagicBootKey ATTR_NO_INIT;
 
 
+uint8_t mcusr_mirror ATTR_NO_INIT;
+
 /** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
  *  start key has been loaded into \ref MagicBootKey. If the bootloader started via the watchdog and the key is valid,
  *  this will force the user application to start via a software jump.
  */
 void Application_Jump_Check(void)
 {
-	/* If the reset source was the bootloader and the key is correct, clear it and jump to the application */
-	if ((MCUSR & (1 << WDRF)) && (MagicBootKey == MAGIC_BOOT_KEY))
-	{
-		/* Turn off the watchdog */
-		MCUSR &= ~(1 << WDRF);
-		wdt_disable();
+	/* Turn off the watchdog */
+	mcusr_mirror = MCUSR;
+  MCUSR = 0;
+  wdt_disable();
 
+	/* If the reset source was the bootloader and the key is correct, clear it and jump to the application */
+	if ((mcusr_mirror & (1 << WDRF)) && (MagicBootKey == MAGIC_BOOT_KEY))
+	{
 		/* Clear the boot key and jump to the user application */
 		MagicBootKey = 0;
 
@@ -99,10 +102,6 @@ int main(void)
 /** Configures all hardware required for the bootloader. */
 static void SetupHardware(void)
 {
-	/* Disable watchdog if enabled by bootloader/fuses */
-	MCUSR &= ~(1 << WDRF);
-	wdt_disable();
-
 	/* Disable clock division */
 	clock_prescale_set(clock_div_1);
 
