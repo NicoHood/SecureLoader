@@ -302,8 +302,7 @@ After entering the recovery mode the user can TODO list
 
 #### 3.1.6 Crypto Algorithms
 AES-256 for encrypting
-AES-256 MAC for signing
-[AES-256 CBC-MAC for hashing](https://en.wikipedia.org/wiki/CBC-MAC)
+[AES-256 CBC-MAC for signing](https://en.wikipedia.org/wiki/CBC-MAC)
 [CRC](http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html) for POST TODO do we need this?
 
 TODO links
@@ -329,7 +328,7 @@ Only after burning the Bootloader via ISP no Bootloader Key was set.
 If no bootkey was set at startup you need to set a Bootloader Key from the
 Bootloader via USB HID. It is intended that it is **not possbile to upload a
 Firmware until a Bootloader Key was set**. It is not possible to remove a
-Bootloader Key afterwards. **Never ship a device without an inital vendor
+Bootloader Key afterwards. **Never ship a device without an initial vendor
 Bootloader Key.** TODO link
 
 TODO will boot straight into recovery mode and require a password change first.
