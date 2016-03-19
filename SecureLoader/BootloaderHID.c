@@ -54,7 +54,10 @@ static uint8_t mcusr_mirror ATTR_NO_INIT;
 static union{
 	uint8_t raw[0];
 	struct{
-		uint16_t PageAddress;
+		union{
+			uint16_t PageAddress;
+			uint8_t padding[AES256_CBC_LENGTH];
+		};
 		uint16_t PageData[SPM_PAGESIZE/2];
 		uint8_t cbcMac[AES256_CBC_LENGTH];
 	};
@@ -66,7 +69,7 @@ static union{
 	struct{
 		uint16_t PageAddress;
 		uint16_t PageData[SPM_PAGESIZE/2];
-		uint8_t cbcMac[AES256_CBC_LENGTH];
+		uint8_t cbcMac[AES256_CBC_LENGTH]; // TODO with CBC MAC? If yes add padding
 	};
 } ReadFlashPage;
 
@@ -123,7 +126,7 @@ int main(void)
 	/* Enable global interrupts so that the USB stack can function */
 	GlobalInterruptEnable();
 
-	uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
+	//uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
 
 	while (RunBootloader)
 	  USB_USBTask();
@@ -151,7 +154,7 @@ static void SetupHardware(void)
 	MCUCR = (1 << IVSEL);
 
 	// TODO remove debug serial
-	uart_init();
+	//uart_init();
 
 	/* Initialize USB subsystem */
 	USB_Init();
@@ -243,6 +246,8 @@ void EVENT_USB_Device_ControlRequest(void)
 				uint16_t PageAddress = ProgrammFlashPage.PageAddress;
 				#endif
 
+				//hexdump(&PageAddress, sizeof(PageAddress));
+
 				// Check if the command is a program page command, or a start application command
 				//TODO only use reboot with 2 byte command?
 				#if (FLASHEND > USHRT_MAX)
@@ -256,12 +261,13 @@ void EVENT_USB_Device_ControlRequest(void)
 				// Do not overwrite the bootloader or write out of bounds
 				else if (PageAddress < BOOT_START_ADDR)
 				{
-					//hexdump(&PageAddress, sizeof(PageAddress));
+					//hexdump(ProgrammFlashPage.cbcMac, sizeof(ProgrammFlashPage.cbcMac));
+					//hexdump(&ProgrammFlashPage, sizeof(ProgrammFlashPage));
 
 				  // Save key and initialization vector inside context
 					// Calculate CBC-MAC
 				  aes256CbcMacInit(&ctx, BootloaderKey);
-					aes256CbcMac(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageAddress) + sizeof(ProgrammFlashPage.PageData));
+					aes256CbcMac(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac));
 
 					// Check if CBC-MAC matches
 					uint8_t i = 0;
@@ -289,7 +295,7 @@ void EVENT_USB_Device_ControlRequest(void)
 			else if(length == sizeof(changeBootloaderKey)){
 				//uart_putchars("NewBKe\r\n");
 				Endpoint_Read_And_Clear_Control_Stream_LE(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
-
+				return;
 				// Save key and initialization vector inside context
 				// Calculate CBC-MAC
 				aes256CbcMacInit(&ctx, BootloaderKey);
@@ -306,7 +312,7 @@ void EVENT_USB_Device_ControlRequest(void)
 				// Only write data if CBC-MAC is correct
 				if(i != sizeof(ctx.cbcMac)){
 					// TODO else error/timeout
-					uart_putchars("NBKERR\r\n");
+					//uart_putchars("NBKERR\r\n");
 					return;
 				}
 

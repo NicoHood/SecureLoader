@@ -49,6 +49,11 @@ void setup() {
   }
   Serial.println();
   Serial.println("---");
+    for (int i = 0; i < sizeof(text); i++) {
+    Serial.print((char)text[i]);
+  }
+  Serial.println();
+  Serial.println("---");
   Serial.println("finish");
 }
 

@@ -70,6 +70,7 @@ void ihex_get_data(int addr, int len, unsigned char *bytes);
 
 // Misc stuff
 int printf_verbose(const char *format, ...);
+void hexdump(uint8_t * data, size_t len);
 void delay(double seconds);
 void die(const char *str, ...);
 void parse_options(int argc, char **argv);
@@ -91,7 +92,7 @@ const char *filename=NULL;
 
 int main(int argc, char **argv)
 {
-	unsigned char buf[260+AES256_CBC_LENGTH];
+	unsigned char buf[260 + AES256_CBC_LENGTH + AES256_CBC_LENGTH - 2];
 	int num, addr, r, first_block=1, waited=0;
 
 	// parse command line arguments
@@ -145,16 +146,22 @@ int main(int argc, char **argv)
 	printf_verbose("Programming");
 	fflush(stdout);
 
-	static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
-											 0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b,
-											 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
-										 };
+	static uint8_t key[32] = {
+		0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
+		0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
+		0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7,
+		0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+	};
+
+	static uint8_t key2[32] = {
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	};
 
 	// Declare aes256 context variable
 	static aes256CbcMacCtx_t ctx;
-
-	// Save key and initialization vector inside context
-	aes256CbcMacInit(&ctx, key);
 
 	for (addr = 0; addr < code_size; addr += block_size) {
 		printf_verbose("\n%d", addr);
@@ -172,14 +179,21 @@ int main(int argc, char **argv)
 			buf[0] = (addr >> 8) & 255;
 			buf[1] = (addr >> 16) & 255;
 		}
+		// Fill the rest with zeros.
+		// This is required as CBC-MAC needs multiple of 16 bytes as input.
+		memset(buf + 2, 0x00, AES256_CBC_LENGTH - 2);
+		ihex_get_data(addr, block_size, buf + AES256_CBC_LENGTH);
 
-		ihex_get_data(addr, block_size, buf + 2);
-
+		// Save key and initialization vector inside context
 		// Calculate and save CBC-MAC
-		aes256CbcMac(&ctx, buf, block_size + 2);
-		memcpy(buf + block_size + 2, ctx.cbcMac, AES256_CBC_LENGTH);
+		aes256CbcMacInit(&ctx, key);
+		aes256CbcMac(&ctx, buf, block_size + AES256_CBC_LENGTH);
+		memcpy(buf + block_size + AES256_CBC_LENGTH, ctx.cbcMac, AES256_CBC_LENGTH);
 
-		r = teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, first_block ? 3.0 : 0.25);
+		r = teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, first_block ? 3.0 : 0.25*4);
+		//printf_verbose("\n");
+		//hexdump(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH);
+		//printf_verbose("\n");
 		if (!r) die("error writing to Teensy\n");
 		first_block = 0;
 	}
@@ -954,6 +968,15 @@ int printf_verbose(const char *format, ...)
 	va_end(ap);
 
 	return r;
+}
+
+void hexdump(uint8_t * data, size_t len)
+{
+	size_t i;
+	for (i = 0; i < len; i++) {
+		printf_verbose("0x%02X\t", data[i]);
+	}
+	printf_verbose("\n");
 }
 
 void delay(double seconds)
