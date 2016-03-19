@@ -7,6 +7,9 @@ static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
 
 uint8_t text[32] = "this is my pass to encrypt";
 
+// 3712 1F  33  DC  CB  25  37  E9  12  8D  44  AB  CF  B2  BE  15  EF  
+// 3924 1F  33  DC  CB  25  37  E9  12  8D  44  AB  CF  B2  BE  15  EF  
+
 void setup() {
   Serial.begin(115200);
   Serial.println("start");
