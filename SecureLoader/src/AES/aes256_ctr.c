@@ -281,7 +281,7 @@ void aes256CbcMac(aes256CbcMacCtx_t *ctx, uint8_t *data, uint16_t dataLen)
   for (i=0; i<dataLen; i+=AES256_CBC_LENGTH)
   {
     // XOR cbcMac with data
-    aesXorVectors(data + i, ctx->cbcMac, AES256_CBC_LENGTH);
+    aesXorVectors(ctx->cbcMac, data + i, AES256_CBC_LENGTH);
 
     // Encrypt next block
     aes256_enc(ctx->cbcMac, &(ctx->aesCtx));
