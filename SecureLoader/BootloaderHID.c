@@ -152,7 +152,7 @@ void EVENT_USB_Device_ControlRequest(void)
 					uint16_t PageAddress;
 					uint16_t pageBuff[SPM_PAGESIZE/2];
 					uint8_t cbcMac[AES256_CBC_LENGTH];
-				}
+				};
 		  }chunk;
 
 			/* Store the data in a temporary buffer */

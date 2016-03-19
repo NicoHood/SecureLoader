@@ -56,14 +56,12 @@ void BootloaderAPI_FillWord(const address_size_t Address, const uint16_t Word)
 
 void BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words)
 {
-	// TODO (re)use functions from above?
 	/* Erase the given FLASH page, ready to be programmed */
 	boot_page_erase(Address);
 	boot_spm_busy_wait();
-	//BootloaderAPI_ErasePage(Address);
 
 	/* Write each of the FLASH page's bytes in sequence */
-	static uint8_t PageWord; //TODO used static to save flash?
+	uint8_t PageWord;
 	for (PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++)
 	{
 		/* Write the next data word to the FLASH page */

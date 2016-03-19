@@ -50,5 +50,3 @@ void aes256_decrypt_ecb(aes256_context *, uint8_t * /* cipertext */);
 #endif
 
 #endif // __AES_H__
-
-
