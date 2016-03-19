@@ -35,10 +35,12 @@ C_INCLUDE_PATH=./lib/
 
 OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067
+OPTIONS += -DBAUD=115200
 
 # Additional source files from libraries
 LIB_SRC += src/AES/aes.c
 LIB_SRC += src/AES/aes256_ctr.c
+LIB_SRC += src/serial/serial1.c
 
 # Bootloader address calculation formulas
 # Do not modify these macros, but rather modify the dependent values above.

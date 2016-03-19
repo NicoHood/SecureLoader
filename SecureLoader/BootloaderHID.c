@@ -84,6 +84,10 @@ int main(void)
 	/* Enable global interrupts so that the USB stack can function */
 	GlobalInterruptEnable();
 
+	uart_putchars("\r\nStartup\r\n");
+	uint8_t hex [] = { 0, 10, 255, 128 };
+	hexdump(hex, sizeof(hex));
+
 	while (RunBootloader)
 	  USB_USBTask();
 
@@ -108,6 +112,9 @@ static void SetupHardware(void)
 	/* Relocate the interrupt vector table to the bootloader section */
 	MCUCR = (1 << IVCE);
 	MCUCR = (1 << IVSEL);
+
+	// TODO remove debug serial
+	uart_init();
 
 	/* Initialize USB subsystem */
 	USB_Init();

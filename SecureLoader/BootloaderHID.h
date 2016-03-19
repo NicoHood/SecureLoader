@@ -46,6 +46,7 @@
 
 		#include "Descriptors.h"
 		#include "src/AES/aes256_ctr.h"
+		#include "src/serial/serial.h"
 		#include "BootloaderAPI.h"
 
 		#include <LUFA/Drivers/USB/USB.h>
