@@ -191,7 +191,8 @@ int main(int argc, char **argv)
 		buf[0] = 0xFF;
 		buf[1] = 0xFF;
 		memset(buf + 2, 0, sizeof(buf) - 2);
-		teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, 0.25);
+		//teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, 0.25);
+		teensy_write(buf, 2, 0.25);
 	}
 	teensy_close();
 	return 0;
@@ -285,12 +286,8 @@ int teensy_write(void *buf, int len, double timeout)
 
 	if (!libusb_teensy_handle) return 0;
 	// 0x0100 out, 0x0200 feature
-	r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0100, 0, (char *)buf,
-		2, (int)(timeout * 1000.0));
-	// if(r >= 0){
-		r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0200, 0, (char *)buf,
-			len, (int)(timeout * 1000.0));
-	//}
+	r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0200, 0, (char *)buf,
+		len, (int)(timeout * 1000.0));
 	if (r < 0) return 0;
 	return 1;
 }

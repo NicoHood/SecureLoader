@@ -48,8 +48,47 @@ static bool RunBootloader = true;
  */
 uint16_t MagicBootKey ATTR_NO_INIT;
 
+static uint8_t mcusr_mirror ATTR_NO_INIT;
 
-uint8_t mcusr_mirror ATTR_NO_INIT;
+// Data to programm a flash page that was sent by the host
+static union{
+	uint8_t raw[0];
+	struct{
+		uint16_t PageAddress;
+		uint16_t PageData[SPM_PAGESIZE/2];
+		uint8_t cbcMac[AES256_CBC_LENGTH];
+	};
+} ProgrammFlashPage;
+
+// Data to read a flash page that was requested by the host
+static union{
+	uint8_t raw[0];
+	struct{
+		uint16_t PageAddress;
+		uint16_t PageData[SPM_PAGESIZE/2];
+		uint8_t cbcMac[AES256_CBC_LENGTH];
+	};
+} ReadFlashPage;
+
+// Data to change the Bootloader Key
+static union{
+	uint8_t raw[0];
+	struct{
+		uint8_t BootloaderKey[32];
+		uint8_t cbcMac[AES256_CBC_LENGTH];
+	};
+} changeBootloaderKey;
+
+// Bootloader Key TODO store in progmem
+static uint8_t BootloaderKey[32] = {
+	0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
+	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
+	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7,
+	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+};
+
+// AES256 CBC-MAC context variable
+static aes256CbcMacCtx_t ctx;
 
 /** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
  *  start key has been loaded into \ref MagicBootKey. If the bootloader started via the watchdog and the key is valid,
@@ -84,9 +123,7 @@ int main(void)
 	/* Enable global interrupts so that the USB stack can function */
 	GlobalInterruptEnable();
 
-	uart_putchars("\r\nStartup\r\n");
-	uint8_t hex [] = { 0, 10, 255, 128 };
-	hexdump(hex, sizeof(hex));
+	uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
 
 	while (RunBootloader)
 	  USB_USBTask();
@@ -129,32 +166,32 @@ void EVENT_USB_Device_ConfigurationChanged(void)
 	Endpoint_ConfigureEndpoint(HID_IN_EPADDR, EP_TYPE_INTERRUPT, HID_IN_EPSIZE, 1);
 }
 
-// Chunk of data that was sent by the host
-static union{
-	uint8_t raw[0];
-	struct{
-		uint16_t PageAddress; // TODO initialize to zero
-		union{
-			uint8_t USBBuffer[0];
-			struct{
-				uint16_t pageBuff[SPM_PAGESIZE/2];
-				uint8_t cbcMac[AES256_CBC_LENGTH];
-			}; //TODO name
-			struct{
-				uint8_t key[32];
-				uint8_t cbcMac[AES256_CBC_LENGTH];
-			}newKey;
-		};
-	};
-}chunk;
+static void Endpoint_Read_And_Clear_Control_Stream_LE(uint8_t* buffer, size_t length)
+{
+	// TODO alternative
+	//Endpoint_Read_Control_Stream_LE(&buffer, length);
+	//return;
 
-static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
-										 0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b,
-										 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
-									 };
+	// TODO comment
+	Endpoint_ClearSETUP();
 
-// Declare aes256 context variable
-static aes256CbcMacCtx_t ctx;
+	// Store the data in the temporary buffer
+	for (size_t i = 0; i < length; i++)
+	{
+		// Check if endpoint is empty - if so clear it and wait until ready for next packet
+		if (!(Endpoint_BytesInEndpoint()))
+		{
+			Endpoint_ClearOUT();
+			while (!(Endpoint_IsOUTReceived()));
+		}
+
+		// Get next data byte
+		buffer[i] = Endpoint_Read_8();
+	}
+
+	// Acknowledge reading to the host
+	Endpoint_ClearOUT();
+}
 
 /** Event handler for the USB_ControlRequest event. This is used to catch and process control requests sent to
  *  the device from the USB host before passing along unhandled control requests to the library for processing
@@ -162,14 +199,13 @@ static aes256CbcMacCtx_t ctx;
  */
 void EVENT_USB_Device_ControlRequest(void)
 {
-	/* Ignore any requests that aren't directed to the HID interface */
+	// Ignore any requests that aren't directed to the HID interface
+	// HostToDevice or DeviceToHost is unimportant as we use Set/GetReport
 	if ((USB_ControlRequest.bmRequestType & (CONTROL_REQTYPE_TYPE | CONTROL_REQTYPE_RECIPIENT)) !=
 	    (REQTYPE_CLASS | REQREC_INTERFACE))
 	{
 		return;
 	}
-
-	// TODO check host to device, device to host?
 
 	// Differentiate between Out and Feature report (in and reserved ignored)
 	uint8_t reportType = (USB_ControlRequest.wValue >> 8);
@@ -180,87 +216,106 @@ void EVENT_USB_Device_ControlRequest(void)
 	{
 		case HID_REQ_SetReport:
 		{
-			// Set PageAddress via out report
-			if(reportType == HID_REPORT_ITEM_Out){
-				if(length != sizeof(chunk.PageAddress))
-					return;
+			if(length == sizeof(ReadFlashPage.PageAddress)){
+				//uart_putchars("PageAddress\r\n");
+				Endpoint_Read_And_Clear_Control_Stream_LE(ReadFlashPage.raw, sizeof(ReadFlashPage.PageAddress));
 
-				// TODO move this check to the other function?
-				uint16_t PageAddress = Endpoint_Read_16_LE();
-				if (PageAddress < BOOT_START_ADDR){
-					chunk.PageAddress = PageAddress;
+				// TODO this check needs to be ported to > 0xFFFF
+				if (ReadFlashPage.PageAddress < BOOT_START_ADDR){
+					ReadFlashPage.PageAddress = 0; // TODO useful?
+					// TODO else error, wrong page address -> stall to notice the app
 				}
-				// else error, wrong page address -> stall to notice the app
+
+				// Check if the command is a program page command, or a start application command
+				else if (ReadFlashPage.PageAddress == COMMAND_STARTAPPLICATION)
+				{
+					RunBootloader = false;
+				}
 			}
+			else if(length == sizeof(ProgrammFlashPage)){
+				//uart_putchars("ProgrammFlashPage\r\n");
+				Endpoint_Read_And_Clear_Control_Stream_LE(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
 
-			// Read in data via feature report
-			if(reportType != HID_REPORT_ITEM_Feature)
-				return;
+				// Read in the write destination address
+				#if (FLASHEND > USHRT_MAX)
+				uint32_t PageAddress = ((uint32_t)ProgrammFlashPage.PageAddress << 8);
+				#else
+				uint16_t PageAddress = ProgrammFlashPage.PageAddress;
+				#endif
 
-			// TODO check recv size == struct size
-			if(length != sizeof(chunk))
-				return;
+				// Check if the command is a program page command, or a start application command
+				//TODO only use reboot with 2 byte command?
+				#if (FLASHEND > USHRT_MAX)
+				if ((uint16_t)(PageAddress >> 8) == COMMAND_STARTAPPLICATION)
+				#else
+				if (PageAddress == COMMAND_STARTAPPLICATION)
+				#endif
+				{
+					RunBootloader = false;
+				}
+				// Do not overwrite the bootloader or write out of bounds
+				else if (PageAddress < BOOT_START_ADDR)
+				{
+					//hexdump(&PageAddress, sizeof(PageAddress));
 
-			Endpoint_ClearSETUP();
+				  // Save key and initialization vector inside context
+					// Calculate CBC-MAC
+				  aes256CbcMacInit(&ctx, BootloaderKey);
+					aes256CbcMac(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageAddress) + sizeof(ProgrammFlashPage.PageData));
 
-			/* Store the data in a temporary buffer */
-			for (size_t i = 0; i < sizeof(chunk); i++)
-		  {
-		    /* Check if endpoint is empty - if so clear it and wait until ready for next packet */
-		    if (!(Endpoint_BytesInEndpoint()))
-		    {
-		      Endpoint_ClearOUT();
-		      while (!(Endpoint_IsOUTReceived()));
-		    }
+					// Check if CBC-MAC matches
+					uint8_t i = 0;
+					for(i = 0; i < sizeof(ctx.cbcMac); i++){
+						if(ProgrammFlashPage.cbcMac[i] != ctx.cbcMac[i]){
+							break;
+						}
+					}
 
-		    /* Get next data byte */
-		    chunk.raw[i] = Endpoint_Read_8();
-		  }
+					// Only write data if CBC-MAC is correct
+					if(i != sizeof(ctx.cbcMac)){
+						// TODO else error/timeout
+						//uart_putchars("CBCERR\r\n");
+						return;
+					}
 
-			/* Acknowledge reading to the host */
-			Endpoint_ClearOUT();
-
-			// TODO alternative
-			//Endpoint_Read_Control_Stream_LE(&chunk.raw, sizeof(chunk));
-
-			/* Read in the write destination address */
-			#if (FLASHEND > 0xFFFF)
-			uint32_t PageAddress = ((uint32_t)chunk.PageAddress << 8);
-			#else
-			uint16_t PageAddress = chunk.PageAddress;
-			#endif
-
-			/* Check if the command is a program page command, or a start application command */
-			#if (FLASHEND > USHRT_MAX)
-			if ((uint16_t)(PageAddress >> 8) == COMMAND_STARTAPPLICATION)
-			#else
-			if (PageAddress == COMMAND_STARTAPPLICATION)
-			#endif
-			{
-				RunBootloader = false;
+					//uart_putchars("Programming\r\n");
+					BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage.PageData);
+				}
+				else{
+					//uart_putchars("FlashPageErr\r\n");
+					//Endpoint_StallTransaction(); //TODO move down as default and return on no error?
+				}
 			}
-			// Do not overwrite the bootloader or write out of bounds
-			else if (PageAddress < BOOT_START_ADDR)
-			{
-			  // Save key and initialization vector inside context
-			  aes256CbcMacInit(&ctx, key);
+			else if(length == sizeof(changeBootloaderKey)){
+				//uart_putchars("NewBKe\r\n");
+				Endpoint_Read_And_Clear_Control_Stream_LE(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
 
+				// Save key and initialization vector inside context
 				// Calculate CBC-MAC
-				aes256CbcMac(&ctx, chunk.raw, sizeof(chunk.PageAddress) + sizeof(chunk.pageBuff));
+				aes256CbcMacInit(&ctx, BootloaderKey);
+				aes256CbcMac(&ctx, changeBootloaderKey.raw, sizeof(changeBootloaderKey));
 
-				// Compare if CBC-MAC matches
+				// Check if CBC-MAC matches
 				uint8_t i = 0;
-				for(i = 0; i < AES256_CBC_LENGTH; i++){
-					if(chunk.cbcMac[i] != ctx.cbcMac[i]){
+				for(i = 0; i < sizeof(ctx.cbcMac); i++){
+					if(changeBootloaderKey.cbcMac[i] != ctx.cbcMac[i]){
 						break;
 					}
 				}
 
 				// Only write data if CBC-MAC is correct
-				if(i == AES256_CBC_LENGTH){
-					BootloaderAPI_EraseFillWritePage(PageAddress, chunk.pageBuff);
+				if(i != sizeof(ctx.cbcMac)){
+					// TODO else error/timeout
+					uart_putchars("NBKERR\r\n");
+					return;
 				}
-				// TODO else error/timeout
+
+				//TODO decrypt key
+			}
+			else{
+				//uart_putchars("Length error\r\n");
+				//hexdump(&length, sizeof(length));
+				return;
 			}
 
 			// Acknowledge SetReport request
@@ -269,38 +324,38 @@ void EVENT_USB_Device_ControlRequest(void)
 		}
 
 		// TODO get report for checksum/authentification?
-		case HID_REQ_GetReport:
-		{
-			// Read in data via feature report
-			if(reportType != HID_REPORT_ITEM_Feature)
-				return;
-
-			uint16_t PageAddress = chunk.PageAddress;
-			if (!(PageAddress < BOOT_START_ADDR)){
-				return;
-			}
-
-			/* Read the next FLASH byte from the current FLASH page */
-			for (uint8_t PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++){
-				#if (FLASHEND > USHRT_MAX)
-				chunk.pageBuff[PageWord] = pgm_read_word_far(PageWord);
-				#else
-				chunk.pageBuff[PageWord] = pgm_read_word(PageWord);
-				#endif
-			}
-
-			// Save key and initialization vector inside context
-			aes256CbcMacInit(&ctx, key);
-
-			// Calculate CBC-MAC
-			aes256CbcMac(&ctx, chunk.raw, sizeof(chunk.PageAddress) + sizeof(chunk.pageBuff));
-
-			// Send the firmware flash to the PC
-			// TODO also send CBC-MAC?
-			for (size_t i = 0; i < sizeof(chunk); i++){
-
-			}
-			break;
-		}
+		// case HID_REQ_GetReport:
+		// {
+		// 	// Read in data via feature report
+		// 	if(reportType != HID_REPORT_ITEM_Feature)
+		// 		return;
+		//
+		// 	uint16_t PageAddress = chunk.PageAddress;
+		// 	if (!(PageAddress < BOOT_START_ADDR)){
+		// 		return;
+		// 	}
+		//
+		// 	/* Read the next FLASH byte from the current FLASH page */
+		// 	for (uint8_t PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++){
+		// 		#if (FLASHEND > USHRT_MAX)
+		// 		chunk.pageData.pageBuff[PageWord] = pgm_read_word_far(PageWord);
+		// 		#else
+		// 		chunk.pageData.pageBuff[PageWord] = pgm_read_word(PageWord);
+		// 		#endif
+		// 	}
+		//
+		// 	// Save key and initialization vector inside context
+		// 	aes256CbcMacInit(&ctx, key);
+		//
+		// 	// Calculate CBC-MAC
+		// 	aes256CbcMac(&ctx, chunk.raw, sizeof(chunk.PageAddress) + sizeof(chunk.pageData.pageBuff));
+		//
+		// 	// Send the firmware flash to the PC
+		// 	// TODO also send CBC-MAC?
+		// 	for (size_t i = 0; i < sizeof(chunk); i++){
+		//
+		// 	}
+		// 	break;
+		// }
 	}
 }
