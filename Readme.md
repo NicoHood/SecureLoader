@@ -537,7 +537,7 @@ See [AVR Fuse Calculator](http://www.engbedded.com/fusecalc/) for more
 information.
 
 #### 3.6.3 Lock Bits Explanation
-- [x] Lock Bit Protection Modes (Memory Lock); [BLB0=00]
+- [x] Lock Bit Protection Modes (Memory Lock); [LB=00]
 - [ ] Boot Lock Bit0 Protection Modes (Application Section); [BLB0=11]
 - [x] Boot Lock Bit1 Protection Modes (Boot Loader Section); [BLB1=00]
 
