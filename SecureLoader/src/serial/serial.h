@@ -20,7 +20,7 @@ void uart_putchars(char data[]);
 char uart_getchar(void);
 int uart_putchar_stream(char c, FILE __attribute__((__unused__)) *stream);
 int uart_getchar_stream(FILE __attribute__((__unused__)) *stream);
-void hexdump(uint8_t * data, size_t len);
+void hexdump(void * data, size_t len);
 
 FILE uart_output;
 FILE uart_input;

@@ -49,12 +49,12 @@ int uart_getchar_stream(FILE *stream) {
     return uart_getchar();
 }
 
-void hexdump(uint8_t * data, size_t len)
+void hexdump(void * data, size_t len)
 {
 	uart_putchars("HEX:\r\n");
 	size_t i;
 	for (i = 0; i < len; i++) {
-		uint8_t b = data[i];
+		uint8_t b = ((uint8_t*)data)[i];
 		uint8_t l = b & 0x0F;
 		uint8_t h = b >> 4;
 
@@ -73,8 +73,7 @@ void hexdump(uint8_t * data, size_t len)
 		else{
 			uart_putchar('A'+l-10);
 		}
-		uart_putchar('\r');
-		uart_putchar('\n');
+		uart_putchar('\t');
 	}
 	uart_putchar('\r');
 	uart_putchar('\n');
