@@ -82,6 +82,9 @@ static union{
 	};
 } changeBootloaderKey;
 
+static uint8_t USB_Buffer[MAX(MAX(sizeof(ReadFlashPage), sizeof(ProgrammFlashPage)),
+													sizeof(changeBootloaderKey))];
+
 // Bootloader Key TODO store in progmem
 static uint8_t BootloaderKey[32] = {
 	0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
@@ -219,9 +222,18 @@ void EVENT_USB_Device_ControlRequest(void)
 	{
 		case HID_REQ_SetReport:
 		{
+			// Do not read more data than we have available as buffer
+			if(length > sizeof(USB_Buffer)){
+				return;
+			}
+
+			Endpoint_Read_And_Clear_Control_Stream_LE(USB_Buffer, length);
+
+			//uart_putchars("set\r\n");
+			//hexdump(&length,2);
 			if(length == sizeof(ReadFlashPage.PageAddress)){
 				//uart_putchars("PageAddress\r\n");
-				Endpoint_Read_And_Clear_Control_Stream_LE(ReadFlashPage.raw, sizeof(ReadFlashPage.PageAddress));
+				memcpy(ReadFlashPage.raw, USB_Buffer, sizeof(ReadFlashPage.PageAddress));
 
 				// TODO this check needs to be ported to > 0xFFFF
 				if (ReadFlashPage.PageAddress < BOOT_START_ADDR){
@@ -237,7 +249,7 @@ void EVENT_USB_Device_ControlRequest(void)
 			}
 			else if(length == sizeof(ProgrammFlashPage)){
 				//uart_putchars("ProgrammFlashPage\r\n");
-				Endpoint_Read_And_Clear_Control_Stream_LE(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
+				memcpy(ProgrammFlashPage.raw, USB_Buffer, sizeof(ProgrammFlashPage));
 
 				// Read in the write destination address
 				#if (FLASHEND > USHRT_MAX)
