@@ -22,7 +22,9 @@
 #define __AES_H__
 
 #include <stdint.h>
+#if defined(__AVR__)
 #include <avr/pgmspace.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

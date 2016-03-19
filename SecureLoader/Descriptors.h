@@ -38,6 +38,7 @@
 
 	/* Includes: */
 		#include <LUFA/Drivers/USB/USB.h>
+		#include "src/AES/aes256_ctr.h"
 
 	/* Type Defines: */
 		/** Type define for the device configuration descriptor structure. This must be defined in the

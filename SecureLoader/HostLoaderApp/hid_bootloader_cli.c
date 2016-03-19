@@ -38,6 +38,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
+#include "../src/AES/aes256_ctr.h"
 
 void usage(void)
 {
@@ -90,7 +91,7 @@ const char *filename=NULL;
 
 int main(int argc, char **argv)
 {
-	unsigned char buf[260];
+	unsigned char buf[260+AES256_CBC_LENGTH];
 	int num, addr, r, first_block=1, waited=0;
 
 	// parse command line arguments
@@ -143,13 +144,26 @@ int main(int argc, char **argv)
 	// program the data
 	printf_verbose("Programming");
 	fflush(stdout);
+
+	static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
+											 0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b,
+											 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+										 };
+
+	// Declare aes256 context variable
+	static aes256CbcMacCtx_t ctx;
+
+	// Save key and initialization vector inside context
+	aes256CbcMacInit(&ctx, key);
+
 	for (addr = 0; addr < code_size; addr += block_size) {
 		if (addr > 0 && !ihex_bytes_within_range(addr, addr + block_size - 1)) {
 			// don't waste time on blocks that are unused,
 			// but always do the first one to erase the chip
 			continue;
 		}
-		printf_verbose(".");
+		//printf_verbose(".");
+		printf_verbose("\n%d", addr);
 		if (code_size < 0x10000) {
 			buf[0] = addr & 255;
 			buf[1] = (addr >> 8) & 255;
@@ -157,8 +171,14 @@ int main(int argc, char **argv)
 			buf[0] = (addr >> 8) & 255;
 			buf[1] = (addr >> 16) & 255;
 		}
+
 		ihex_get_data(addr, block_size, buf + 2);
-		r = teensy_write(buf, block_size + 2 + 16, first_block ? 3.0 : 0.25);
+
+		// Calculate and save CBC-MAC
+		aes256CbcMac(&ctx, buf, block_size + 2);
+		memcpy(buf + block_size + 2, ctx.cbcMac[i], AES256_CBC_LENGTH)
+
+		r = teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, first_block ? 3.0 : 0.25);
 		if (!r) die("error writing to Teensy\n");
 		first_block = 0;
 	}
@@ -170,7 +190,7 @@ int main(int argc, char **argv)
 		buf[0] = 0xFF;
 		buf[1] = 0xFF;
 		memset(buf + 2, 0, sizeof(buf) - 2);
-		teensy_write(buf, block_size + 2 + 16, 0.25);
+		teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, 0.25);
 	}
 	teensy_close();
 	return 0;

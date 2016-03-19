@@ -189,7 +189,33 @@ void EVENT_USB_Device_ControlRequest(void)
 				RunBootloader = false;
 			}
 			else{
-				BootloaderAPI_EraseFillWritePage(PageAddress, chunk.pageBuff);
+				static uint8_t key[32] = { 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b,
+	                           0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81, 0x1f, 0x35, 0x2c, 0x07, 0x3b,
+	                           0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+	                         };
+
+			  // Declare aes256 context variable
+				static aes256CbcMacCtx_t ctx;
+
+			  // Save key and initialization vector inside context
+			  aes256CbcMacInit(&ctx, key);
+
+				// Calculate CBC-MAC
+				aes256CbcMac(&ctx, chunk.raw, sizeof(chunk.PageAddress) + sizeof(chunk.pageBuff));
+
+				// Compare if CBC-MAC matches
+				uint8_t i = 0;
+				for(i = 0; i < AES256_CBC_LENGTH; i++){
+					if(chunk.cbcMac[i] != ctx.cbcMac[i]){
+						break;
+					}
+				}
+
+				// Only write data if CBC-MAC is correct
+				if(i == AES256_CBC_LENGTH){
+					BootloaderAPI_EraseFillWritePage(PageAddress, chunk.pageBuff);
+				}
+				// TODO else error/timeout
 			}
 
 			// Acknowledge SetReport request

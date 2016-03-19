@@ -7,7 +7,7 @@ ifeq ($(OS), LINUX)  # also works on FreeBSD
 CC ?= gcc
 CFLAGS ?= -O2 -Wall
 hid_bootloader_cli: hid_bootloader_cli.c
-	$(CC) $(CFLAGS) -s -DUSE_LIBUSB -o hid_bootloader_cli hid_bootloader_cli.c -lusb
+	$(CC) $(CFLAGS) -s -DUSE_LIBUSB -o hid_bootloader_cli hid_bootloader_cli.c ../src/AES/aes.c ../src/AES/aes256_ctr.c -lusb
 
 
 else ifeq ($(OS), WINDOWS)
