@@ -147,8 +147,9 @@ int main(void)
 
 	//uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
 
-	while (RunBootloader)
+	do{
 	  USB_USBTask();
+	} while (RunBootloader);
 
 	/* Disconnect from the host - USB interface will be reset later along with the AVR */
 	USB_Detach();
