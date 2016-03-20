@@ -18,7 +18,7 @@ F_CPU        = 16000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = s
 TARGET       = BootloaderHID
-SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c BootloaderAPITable.S $(LIB_SRC) $(LUFA_SRC_USB)
+SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c $(LIB_SRC) $(LUFA_SRC_USB)
 LUFA_PATH    = ../lufa/LUFA
 CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET) -flto -fuse-linker-plugin
 LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS) -flto -fuse-linker-plugin
@@ -36,6 +36,8 @@ C_INCLUDE_PATH=./lib/
 OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067
 OPTIONS += -DBAUD=115200
+
+#SRC += BootloaderAPITable.S
 
 # Additional source files from libraries
 LIB_SRC += src/AES/aes.c

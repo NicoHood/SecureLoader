@@ -48,12 +48,12 @@ BootloaderAPI_Trampolines:
 		jmp BootloaderAPI_ReadLock
 	BootloaderAPI_WriteLock_Trampoline:
 		jmp BootloaderAPI_WriteLock
-	BootloaderAPI_UNUSED1:
-		ret
-	BootloaderAPI_UNUSED2:
-		ret
-	BootloaderAPI_UNUSED3:
-		ret
+	BootloaderAPI_aes256_init_ecb_Trampoline:
+		jmp aes256_init_ecb
+	BootloaderAPI_aes256_encrypt_ecb_Trampoline:
+		jmp aes256_encrypt_ecb
+	BootloaderAPI_aes256_decrypt_ecb_Trampoline:
+		jmp aes256_decrypt_ecb
 	BootloaderAPI_UNUSED4:
 		ret
 	BootloaderAPI_UNUSED5:
@@ -73,9 +73,9 @@ BootloaderAPI_JumpTable:
 	rjmp BootloaderAPI_ReadFuse_Trampoline
 	rjmp BootloaderAPI_ReadLock_Trampoline
 	rjmp BootloaderAPI_WriteLock_Trampoline
-	rjmp BootloaderAPI_UNUSED1 ; UNUSED ENTRY 1
-	rjmp BootloaderAPI_UNUSED2 ; UNUSED ENTRY 2
-	rjmp BootloaderAPI_UNUSED3 ; UNUSED ENTRY 3
+	rjmp BootloaderAPI_aes256_init_ecb_Trampoline
+	rjmp BootloaderAPI_aes256_encrypt_ecb_Trampoline
+	rjmp BootloaderAPI_aes256_decrypt_ecb_Trampoline
 	rjmp BootloaderAPI_UNUSED4 ; UNUSED ENTRY 4
 	rjmp BootloaderAPI_UNUSED5 ; UNUSED ENTRY 5
 
