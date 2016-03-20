@@ -84,20 +84,20 @@ typedef union{
 } ReadFlashPage_t;
 
 // Data to change the Bootloader Key
-static union{
+typedef union{
 	uint8_t raw[0];
 	struct{
 		uint8_t BootloaderKey[32];
 		uint8_t cbcMac[AES256_CBC_LENGTH];
 	};
-} changeBootloaderKey;
+} changeBootloaderKey_t;
 
 // Temporary USB_Buffer holds data to send/receive data.
 // It gets overwritten with every request.
 // Since more features use the same buffer you can
 // set an PageAddress via several methods (SetFlashPage or ProgrammFlashPage).
 static uint8_t USB_Buffer[MAX(MAX(sizeof(ReadFlashPage_t), sizeof(ProgrammFlashPage_t)),
-													sizeof(changeBootloaderKey))];
+													sizeof(changeBootloaderKey_t))];
 
 // Bootloader Key TODO store in progmem
 static uint8_t BootloaderKey[32] = {
@@ -188,32 +188,6 @@ void EVENT_USB_Device_ConfigurationChanged(void)
 	Endpoint_ConfigureEndpoint(HID_IN_EPADDR, EP_TYPE_INTERRUPT, HID_IN_EPSIZE, 1);
 }
 
-static void Endpoint_Read_And_Clear_Control_Stream_LE(uint8_t* buffer, size_t length)
-{
-	// TODO alternative
-	//Endpoint_Read_Control_Stream_LE(&buffer, length);
-	//return;
-
-	// Acknowledge setup data
-	Endpoint_ClearSETUP();
-
-	// Store the data in the temporary buffer
-	for (size_t i = 0; i < length; i++)
-	{
-		// Check if endpoint is empty - if so clear it and wait until ready for next packet
-		if (!(Endpoint_BytesInEndpoint()))
-		{
-			Endpoint_ClearOUT();
-			while (!(Endpoint_IsOUTReceived()));
-		}
-
-		// Get next data byte
-		buffer[i] = Endpoint_Read_8();
-	}
-
-	// Acknowledge reading to the host
-	Endpoint_ClearOUT();
-}
 
 /** Event handler for the USB_ControlRequest event. This is used to catch and process control requests sent to
  *  the device from the USB host before passing along unhandled control requests to the library for processing
@@ -224,11 +198,12 @@ void EVENT_USB_Device_ControlRequest(void)
 	// Ignore any requests that aren't directed to the HID interface
 	// HostToDevice or DeviceToHost is unimportant as we use Set/GetReport
 	if ((USB_ControlRequest.bmRequestType & (CONTROL_REQTYPE_TYPE | CONTROL_REQTYPE_RECIPIENT)) !=
-	    (REQTYPE_CLASS | REQREC_INTERFACE))
-	{
+	    (REQTYPE_CLASS | REQREC_INTERFACE))	{
 		return;
 	}
 
+	// Get input data length
+	// TODO also important for GET_Report?
 	uint16_t length = USB_ControlRequest.wLength;
 
 	/* Process HID specific control requests */
@@ -242,15 +217,32 @@ void EVENT_USB_Device_ControlRequest(void)
 				return;
 			}
 
-			// Read in data from the PC if it fits the USB_Buffer size
-			Endpoint_Read_And_Clear_Control_Stream_LE(USB_Buffer, length);
+			// Acknowledge setup data
+			Endpoint_ClearSETUP();
+
+			// Store the data in the temporary buffer
+			for (size_t i = 0; i < length; i++)
+			{
+				// Check if endpoint is empty - if so clear it and wait until ready for next packet
+				if (!(Endpoint_BytesInEndpoint()))
+				{
+					Endpoint_ClearOUT();
+					while (!(Endpoint_IsOUTReceived()));
+				}
+
+				// Get next data byte
+				USB_Buffer[i] = Endpoint_Read_8();
+			}
+
+			// Acknowledge reading to the host
+			Endpoint_ClearOUT();
 
 			// Process set PageAddress command
 			if(length == sizeof_member(SetFlashPage_t, PageAddress))
 			{
-				// Interpret data as ProgrammFlashPage_t
-				SetFlashPage_t* ReadFlashPage = (SetFlashPage_t*)USB_Buffer;
-				uint16_t PageAddress = ReadFlashPage->PageAddress;
+				// Interpret data SetFlashPage_t
+				SetFlashPage_t* SetFlashPage = (SetFlashPage_t*)USB_Buffer;
+				uint16_t PageAddress = SetFlashPage->PageAddress;
 
 				// Check if the command is a program page command, or a start application command.
 				// Do not validate PageAddress, we do this in the GetReport request.
@@ -294,15 +286,15 @@ void EVENT_USB_Device_ControlRequest(void)
 					return;
 				}
 
-				// Only write data if CBC-MAC matches
-				// if(!aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
-				// 																	ProgrammFlashPage.raw,
-				// 																	sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac),
-				// 																	ProgrammFlashPage.cbcMac)
+				// // Only write data if CBC-MAC matches
+				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
+				// 																	ProgrammFlashPage->raw,
+				// 																	sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac),
+				// 																	ProgrammFlashPage->cbcMac))
 				// {
 				// 	// TODO timeout, prevent brute force
 				//  Endpoint_StallTransaction();
-				// 	return;
+				//  return;
 				// }
 
 				//uart_putchars("Programming\r\n");
@@ -312,32 +304,38 @@ void EVENT_USB_Device_ControlRequest(void)
 				Endpoint_ClearStatusStage();
 				break;
 			}
-			else if(length == sizeof(changeBootloaderKey)){
-				return; //TODO remove
-				//uart_putchars("NewBKe\r\n");
-				Endpoint_Read_And_Clear_Control_Stream_LE(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
+			else if(length == sizeof(changeBootloaderKey_t))
+			{
+				// Interpret data as ProgrammFlashPage_t
+				changeBootloaderKey_t* changeBootloaderKey = (changeBootloaderKey_t*)USB_Buffer;
 
 				// Save key and initialization vector inside context
 				// Calculate CBC-MAC
 				aes256CbcMacInit(&ctx, BootloaderKey);
-				aes256CbcMacUpdate(&ctx, changeBootloaderKey.raw, sizeof(changeBootloaderKey));
+				aes256CbcMacUpdate(&ctx, changeBootloaderKey->raw, sizeof(changeBootloaderKey_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
 
-				// Check if CBC-MAC matches
-				uint8_t i = 0;
-				for(i = 0; i < sizeof(ctx.cbcMac); i++){
-					if(changeBootloaderKey.cbcMac[i] != ctx.cbcMac[i]){
-						break;
-					}
-				}
-
-				// Only write data if CBC-MAC is correct
-				if(i != sizeof(ctx.cbcMac)){
-					// TODO else error/timeout
-					//uart_putchars("NBKERR\r\n");
+				// Only continue if CBC-MAC matches
+				if(aes256CbcMacCompare(&ctx, changeBootloaderKey->cbcMac)){
+					// TODO timeout, prevent brute force
+					Endpoint_StallTransaction();
 					return;
 				}
 
+				// Only continue if CBC-MAC matches
+				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
+				// 																	changeBootloaderKey->raw,
+				// 																	sizeof(changeBootloaderKey_t) - sizeof_member(ProgrammFlashPage_t, cbcMac),
+				// 																	changeBootloaderKey->cbcMac))
+				// {
+				// 	// TODO timeout, prevent brute force
+				// 	Endpoint_StallTransaction();
+				// 	return;
+				// }
+
 				//TODO decrypt key
+
+				// Acknowledge SetReport request
+				Endpoint_ClearStatusStage();
 			}
 			else{
 				//uart_putchars("Length error\r\n");
