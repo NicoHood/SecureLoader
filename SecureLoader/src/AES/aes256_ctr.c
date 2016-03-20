@@ -306,6 +306,41 @@ bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac)
 }
 
 
+/*!	\fn 	bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
+*	\brief	Compare if CBC-MAC matches with the input data
+*
+*   \param  ctx - context
+*   \param  data - pointer to data
+*   \param  dataLen - size of data
+*/
+bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
+{
+  // Check if dataLen is a multiple of AES256_CBC_LENGTH
+  if(dataLen % AES256_CBC_LENGTH != 0) {
+    return true;
+  }
+
+  // Loop will update cbcMac for each block
+  uint16_t i;
+  for (i=0; i<dataLen; i+=AES256_CBC_LENGTH)
+  {
+    // Decrypt next block
+    aes256_dec(ctx->cbcMac, &(ctx->aesCtx));
+
+    // XOR cbcMac with data
+    aesXorVectors(ctx->cbcMac, data + dataLen - i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+  }
+
+  // Check if CBC-MAC matches
+  for(i = 0; i < AES256_CBC_LENGTH; i++){
+    if(ctx->cbcMac[i] != 0x00){
+      return true;
+    }
+  }
+  return false;
+}
+
+
 /*!	\fn 	bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac)
 *	\brief	Init, Update and Compare CBC-MAC with the input data
 *

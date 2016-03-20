@@ -49,7 +49,11 @@ void setup() {
   }
   Serial.println();
   Serial.println("---");
-    for (int i = 0; i < sizeof(text); i++) {
+  
+  Serial.println(aes256CbcMacReverseCompare(&ctx, text, sizeof(text)));
+
+
+  for (int i = 0; i < sizeof(text); i++) {
     Serial.print((char)text[i]);
   }
   Serial.println();

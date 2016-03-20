@@ -78,6 +78,7 @@ typedef struct
 void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key);
 void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen);
 bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac);
+bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen);
 bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac);
 
 #ifdef __cplusplus
