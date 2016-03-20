@@ -171,6 +171,11 @@ int main(int argc, char **argv)
 			printf_verbose(" Empty block!");
 			//continue;
 		}
+		if(addr >= code_size - 4*1024){
+			printf_verbose(" Skipping BootLoader Section!");
+			continue;
+		}
+
 		//printf_verbose(".");
 		if (code_size < 0x10000) {
 			buf[0] = addr & 255;
@@ -187,7 +192,7 @@ int main(int argc, char **argv)
 		// Save key and initialization vector inside context
 		// Calculate and save CBC-MAC
 		aes256CbcMacInit(&ctx, key);
-		aes256CbcMac(&ctx, buf, block_size + AES256_CBC_LENGTH);
+		aes256CbcMacUpdate(&ctx, buf, block_size + AES256_CBC_LENGTH);
 		memcpy(buf + block_size + AES256_CBC_LENGTH, ctx.cbcMac, AES256_CBC_LENGTH);
 
 		r = teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, first_block ? 3.0 : 0.25*4);

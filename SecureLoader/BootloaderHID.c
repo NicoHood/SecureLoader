@@ -50,8 +50,10 @@ uint16_t MagicBootKey ATTR_NO_INIT;
 
 static uint8_t mcusr_mirror ATTR_NO_INIT;
 
+#define sizeof_member(type, member) sizeof(((type *)0)->member)
+
 // Data to programm a flash page that was sent by the host
-static union{
+typedef union{
 	uint8_t raw[0];
 	struct{
 		union{
@@ -61,17 +63,25 @@ static union{
 		uint16_t PageData[SPM_PAGESIZE/2];
 		uint8_t cbcMac[AES256_CBC_LENGTH];
 	};
-} ProgrammFlashPage;
+} ProgrammFlashPage_t;
+
+// Set a flash page address, that can be requested by the host afterwards
+typedef union{
+	uint8_t raw[0];
+	struct{
+		uint16_t PageAddress;
+	};
+} SetFlashPage_t;
 
 // Data to read a flash page that was requested by the host
-static union{
+typedef union{
 	uint8_t raw[0];
 	struct{
 		uint16_t PageAddress;
 		uint16_t PageData[SPM_PAGESIZE/2];
 		uint8_t cbcMac[AES256_CBC_LENGTH]; // TODO with CBC MAC? If yes add padding
 	};
-} ReadFlashPage;
+} ReadFlashPage_t;
 
 // Data to change the Bootloader Key
 static union{
@@ -82,7 +92,11 @@ static union{
 	};
 } changeBootloaderKey;
 
-static uint8_t USB_Buffer[MAX(MAX(sizeof(ReadFlashPage), sizeof(ProgrammFlashPage)),
+// Temporary USB_Buffer holds data to send/receive data.
+// It gets overwritten with every request.
+// Since more features use the same buffer you can
+// set an PageAddress via several methods (SetFlashPage or ProgrammFlashPage).
+static uint8_t USB_Buffer[MAX(MAX(sizeof(ReadFlashPage_t), sizeof(ProgrammFlashPage_t)),
 													sizeof(changeBootloaderKey))];
 
 // Bootloader Key TODO store in progmem
@@ -178,7 +192,7 @@ static void Endpoint_Read_And_Clear_Control_Stream_LE(uint8_t* buffer, size_t le
 	//Endpoint_Read_Control_Stream_LE(&buffer, length);
 	//return;
 
-	// TODO comment
+	// Acknowledge setup data
 	Endpoint_ClearSETUP();
 
 	// Store the data in the temporary buffer
@@ -213,13 +227,12 @@ void EVENT_USB_Device_ControlRequest(void)
 		return;
 	}
 
-	// Differentiate between Out and Feature report (in and reserved ignored)
-	uint8_t reportType = (USB_ControlRequest.wValue >> 8);
 	uint16_t length = USB_ControlRequest.wLength;
 
 	/* Process HID specific control requests */
 	switch (USB_ControlRequest.bRequest)
 	{
+		// Do not differentiate between Out or Feature report (in and reserved are ignored too)
 		case HID_REQ_SetReport:
 		{
 			// Do not read more data than we have available as buffer
@@ -227,85 +240,75 @@ void EVENT_USB_Device_ControlRequest(void)
 				return;
 			}
 
+			// Read in data from the PC if it fits the USB_Buffer size
 			Endpoint_Read_And_Clear_Control_Stream_LE(USB_Buffer, length);
 
-			//uart_putchars("set\r\n");
-			//hexdump(&length,2);
-			if(length == sizeof(ReadFlashPage.PageAddress)){
-				//uart_putchars("PageAddress\r\n");
-				memcpy(ReadFlashPage.raw, USB_Buffer, sizeof(ReadFlashPage.PageAddress));
+			// Process set PageAddress command
+			if(length == sizeof_member(SetFlashPage_t, PageAddress))
+			{
+				// Interpret data as ProgrammFlashPage_t
+				SetFlashPage_t* ReadFlashPage = (SetFlashPage_t*)USB_Buffer;
+				uint16_t PageAddress = ReadFlashPage->PageAddress;
 
-				// TODO this check needs to be ported to > 0xFFFF
-				if (ReadFlashPage.PageAddress < BOOT_START_ADDR){
-					ReadFlashPage.PageAddress = 0; // TODO useful?
-					// TODO else error, wrong page address -> stall to notice the app
-				}
-
-				// Check if the command is a program page command, or a start application command
-				else if (ReadFlashPage.PageAddress == COMMAND_STARTAPPLICATION)
-				{
+				// Check if the command is a program page command, or a start application command.
+				// Do not validate PageAddress, we do this in the GetReport request.
+				if (PageAddress == COMMAND_STARTAPPLICATION) {
 					RunBootloader = false;
 				}
+
+				// Acknowledge SetReport request
+				Endpoint_ClearStatusStage();
+				return;
 			}
-			else if(length == sizeof(ProgrammFlashPage)){
-				//uart_putchars("ProgrammFlashPage\r\n");
-				memcpy(ProgrammFlashPage.raw, USB_Buffer, sizeof(ProgrammFlashPage));
+			else if(length == sizeof(ProgrammFlashPage_t))
+			{
+				// Interpret data as ProgrammFlashPage_t
+				ProgrammFlashPage_t* ProgrammFlashPage = (ProgrammFlashPage_t*)USB_Buffer;
 
 				// Read in the write destination address
 				#if (FLASHEND > USHRT_MAX)
-				uint32_t PageAddress = ((uint32_t)ProgrammFlashPage.PageAddress << 8);
+				uint32_t PageAddress = ((uint32_t)ProgrammFlashPage->PageAddress << 8);
 				#else
-				uint16_t PageAddress = ProgrammFlashPage.PageAddress;
+				uint16_t PageAddress = ProgrammFlashPage->PageAddress;
 				#endif
 
-				//hexdump(&PageAddress, sizeof(PageAddress));
-
-				// Check if the command is a program page command, or a start application command
-				//TODO only use reboot with 2 byte command?
-				#if (FLASHEND > USHRT_MAX)
-				if ((uint16_t)(PageAddress >> 8) == COMMAND_STARTAPPLICATION)
-				#else
-				if (PageAddress == COMMAND_STARTAPPLICATION)
-				#endif
-				{
-					RunBootloader = false;
-				}
 				// Do not overwrite the bootloader or write out of bounds
-				else if (PageAddress < BOOT_START_ADDR)
+			 	if (PageAddress >= BOOT_START_ADDR)
 				{
-					//hexdump(ProgrammFlashPage.cbcMac, sizeof(ProgrammFlashPage.cbcMac));
-					//hexdump(&ProgrammFlashPage, sizeof(ProgrammFlashPage));
-
-				  // Save key and initialization vector inside context
-					// Calculate CBC-MAC
-				  aes256CbcMacInit(&ctx, BootloaderKey);
-					aes256CbcMacUpdate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac));
-
-					// Only write data if CBC-MAC matches
-					if(!aes256CbcMacCompare(&ctx, ProgrammFlashPage.cbcMac)){
-						// TODO else error/timeout
-						//uart_putchars("CBCERR\r\n");
-						return;
-					}
-
-					// Only write data if CBC-MAC matches
-					// if(!aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
-					// 																	ProgrammFlashPage.raw,
-					// 																	sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac),
-					// 																	ProgrammFlashPage.cbcMac)
-					// {
-					// 	// TODO else error/timeout
-					// 	//uart_putchars("CBCERR\r\n");
-					// 	return;
-					// }
-
-					//uart_putchars("Programming\r\n");
-					BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage.PageData);
+					Endpoint_StallTransaction();
+					return;
 				}
-				else{
-					//uart_putchars("FlashPageErr\r\n");
-					//Endpoint_StallTransaction(); //TODO move down as default and return on no error?
+
+			  // Save key and initialization vector inside context
+				// Calculate CBC-MAC
+			  aes256CbcMacInit(&ctx, BootloaderKey);
+				aes256CbcMacUpdate(&ctx, ProgrammFlashPage->raw,
+					                 sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
+
+				// Only write data if CBC-MAC matches
+				if(aes256CbcMacCompare(&ctx, ProgrammFlashPage->cbcMac)){
+					// TODO timeout, prevent brute force
+					Endpoint_StallTransaction();
+					return;
 				}
+
+				// Only write data if CBC-MAC matches
+				// if(!aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
+				// 																	ProgrammFlashPage.raw,
+				// 																	sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac),
+				// 																	ProgrammFlashPage.cbcMac)
+				// {
+				// 	// TODO timeout, prevent brute force
+				//  Endpoint_StallTransaction();
+				// 	return;
+				// }
+
+				//uart_putchars("Programming\r\n");
+				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage->PageData);
+
+				// Acknowledge SetReport request
+				Endpoint_ClearStatusStage();
+				break;
 			}
 			else if(length == sizeof(changeBootloaderKey)){
 				return; //TODO remove
@@ -356,6 +359,16 @@ void EVENT_USB_Device_ControlRequest(void)
 		// 	if (!(PageAddress < BOOT_START_ADDR)){
 		// 		return;
 		// 	}
+		// TODO this check needs to be ported to > 0xFFFF
+		// Check if the command is a program page command, or a start application command
+		// #if (FLASHEND > USHRT_MAX)
+		// if ((uint16_t)(PageAddress >> 8) == COMMAND_STARTAPPLICATION)
+		// #else
+		// if (PageAddress == COMMAND_STARTAPPLICATION)
+		// #endif
+		// {
+		// 	RunBootloader = false;
+		// }
 		//
 		// 	/* Read the next FLASH byte from the current FLASH page */
 		// 	for (uint8_t PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++){
