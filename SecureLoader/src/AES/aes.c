@@ -23,7 +23,7 @@
 #define FD(x)  (((x) >> 1) ^ (((x) & 1) ? 0x8d : 0))
 
 #if defined(__AVR__)
-#define BACK_TO_TABLES
+//#define BACK_TO_TABLES
 #endif
 #ifdef BACK_TO_TABLES
 

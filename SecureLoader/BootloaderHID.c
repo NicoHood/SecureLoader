@@ -238,7 +238,7 @@ void EVENT_USB_Device_ControlRequest(void)
 			// Acknowledge reading to the host
 			Endpoint_ClearOUT();
 
-			// Process set PageAddress command
+			// Process SetFlashPage command
 			if(length == sizeof_member(SetFlashPage_t, PageAddress))
 			{
 				// Interpret data SetFlashPage_t
@@ -255,6 +255,7 @@ void EVENT_USB_Device_ControlRequest(void)
 				Endpoint_ClearStatusStage();
 				return;
 			}
+			// Process ProgrammFlashPage command
 			else if(length == sizeof(ProgrammFlashPage_t))
 			{
 				// Interpret data as ProgrammFlashPage_t
@@ -273,6 +274,20 @@ void EVENT_USB_Device_ControlRequest(void)
 					Endpoint_StallTransaction();
 					return;
 				}
+
+				// memcpy(ctx.cbcMac, ProgrammFlashPage->cbcMac, sizeof(ctx.cbcMac));
+				//
+				// // Initialize key schedule inside CTX
+				// aes256_init(BootloaderKey, &(ctx.aesCtx));
+				//
+				// // Only write data if CBC-MAC matches
+				// if(aes256CbcMacReverseCompare(&ctx, ProgrammFlashPage->raw,
+				//  	                 						sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac)))
+				// {
+				// 	// TODO timeout, prevent brute force
+				// 	Endpoint_StallTransaction();
+				// 	return;
+				// }
 
 			  // Save key and initialization vector inside context
 				// Calculate CBC-MAC
@@ -305,10 +320,26 @@ void EVENT_USB_Device_ControlRequest(void)
 				Endpoint_ClearStatusStage();
 				break;
 			}
+			// Process changeBootloaderKey command
 			else if(length == sizeof(changeBootloaderKey_t))
 			{
+				return;
 				// Interpret data as ProgrammFlashPage_t
 				changeBootloaderKey_t* changeBootloaderKey = (changeBootloaderKey_t*)USB_Buffer;
+
+				// Initialize key schedule inside CTX
+				aes256_init(BootloaderKey, &(ctx.aesCtx));
+
+				for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
+					// Encrypt next block
+			    //aes256_dec(changeBootloaderKey->raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
+				}
+
+				hexdump(changeBootloaderKey->raw, sizeof(changeBootloaderKey_t));
+				return;
+
+
+
 
 				// Save key and initialization vector inside context
 				// Calculate CBC-MAC
@@ -338,9 +369,8 @@ void EVENT_USB_Device_ControlRequest(void)
 				// Acknowledge SetReport request
 				Endpoint_ClearStatusStage();
 			}
+			// No valid data length found
 			else{
-				//uart_putchars("Length error\r\n");
-				//hexdump(&length, sizeof(length));
 				return;
 			}
 

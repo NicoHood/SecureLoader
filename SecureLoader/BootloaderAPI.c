@@ -56,6 +56,8 @@ void BootloaderAPI_FillWord(const address_size_t Address, const uint16_t Word)
 
 void BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words)
 {
+	// TODO only write data if its new, to preserv flash destruction on replay attacks
+
 	/* Erase the given FLASH page, ready to be programmed */
 	boot_page_erase(Address);
 	boot_spm_busy_wait();

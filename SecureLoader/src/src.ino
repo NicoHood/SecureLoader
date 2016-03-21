@@ -41,7 +41,7 @@ void setup() {
   Serial.println();
   Serial.println("---");
 
-  aes256CbcMac(&ctx, text, sizeof(text));
+  aes256CbcMacUpdate(&ctx, text, sizeof(text));
 
   for (int i = 0; i < AES256_CBC_LENGTH; i++) {
     Serial.print(ctx.cbcMac[i], HEX);

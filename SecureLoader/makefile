@@ -20,8 +20,8 @@ OPTIMIZATION = s
 TARGET       = BootloaderHID
 SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c $(LIB_SRC) $(LUFA_SRC_USB)
 LUFA_PATH    = ../lufa/LUFA
-CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET) -flto -fuse-linker-plugin
-LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS) -flto -fuse-linker-plugin
+CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET)
+LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS)
 
 # Flash size and bootloader section sizes of the target, in KB. These must
 # match the target's total FLASH size and the bootloader size set in the
@@ -29,13 +29,20 @@ LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAG
 FLASH_SIZE_KB        := 32
 BOOT_SECTION_SIZE_KB := 4
 
-# Gcc settings
+# Special optimization (most important at the top)
 COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
+CC_FLAGS  += -flto -fuse-linker-plugin
+LD_FLAGS  += -flto -fuse-linker-plugin
+# CC_FLAGS  += -mcall-prologues
+CC_FLAGS  += -fno-split-wide-types
+CC_FLAGS  += -fno-tree-scev-cprop
+
 C_INCLUDE_PATH=./lib/
 
 OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067
 OPTIONS += -DBAUD=115200
+#OPTIONS += -DBACK_TO_TABLES
 
 #SRC += BootloaderAPITable.S
 
@@ -58,12 +65,9 @@ BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   Boot
 BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
 
 # Avrdude settings
-AVRDUDE_PORT       = /dev/ttyACM1
+AVRDUDE_PORT       = /dev/ttyACM0
 AVRDUDE_PROGRAMMER = stk500v1
-AVRDUDE_FLAGS      = -b 19200
-#	avrdude -patmega32u4 -cstk500v1 -P/dev/ttyACM1 -b19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
-#	avrdude -patmega32u4 -cstk500v1 -P/dev/ttyACM1 -b19200 -Uflash:w:./$(TARGET).hex:i -Ulock:w:0x2F:m
-
+AVRDUDE_FLAGS      = -b 19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
 
 # Default target
 all:
