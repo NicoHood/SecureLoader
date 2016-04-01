@@ -45,12 +45,11 @@
 		#include <stdbool.h>
 
 		#include "Descriptors.h"
-		#include "src/AES/aes256_ctr.h"
-		#include "src/serial/serial.h"
+		#include "AES/aes256_ctr.h"
+		#include "SERIAL/serial.h"
 		#include "BootloaderAPI.h"
 
 		#include <LUFA/Drivers/USB/USB.h>
-		#include <LUFA/Platform/Platform.h>
 
 	/* Preprocessor Checks: */
 		#if !defined(__OPTIMIZE_SIZE__)
@@ -70,6 +69,7 @@
 		void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
 
 		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_ControlRequest(void);
+		void EVENT_USB_Device_ControlRequest2(void);
+	  void USB_Device_ProcessControlRequestInline(void);
 
 #endif

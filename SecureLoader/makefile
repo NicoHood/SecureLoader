@@ -18,7 +18,7 @@ F_CPU        = 16000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = s
 TARGET       = BootloaderHID
-SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c $(LIB_SRC) $(LUFA_SRC_USB)
+SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c $(LIBOBJS) $(LUFA_SRC_USB)
 LUFA_PATH    = ../lufa/LUFA
 CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET)
 LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS)
@@ -33,9 +33,24 @@ BOOT_SECTION_SIZE_KB := 4
 COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
 CC_FLAGS  += -flto -fuse-linker-plugin
 LD_FLAGS  += -flto -fuse-linker-plugin
-# CC_FLAGS  += -mcall-prologues
+#CC_FLAGS  += -mcall-prologues
 CC_FLAGS  += -fno-split-wide-types
 CC_FLAGS  += -fno-tree-scev-cprop
+
+# Reserved registers for faster USB-Serial convertion
+# The lower, the better (except 0 and 1)
+# r2: USB_Device_ConfigurationNumber
+REGS      += -ffixed-r2
+#REGS      += -ffixed-r3
+#REGS      += -ffixed-r4
+#REGS      += -ffixed-r4 -ffixed-r5 -ffixed-r6
+#-ffixed-r7
+#REGS      += -ffixed-r9 -ffixed-r10 -ffixed-r8
+#-ffixed-r12
+#REGS      += -ffixed-r12 -ffixed-r13 -ffixed-r14 -ffixed-r15
+#REGS      += -ffixed-r16 -ffixed-r17 -ffixed-r18 -ffixed-r19
+CC_FLAGS  += $(REGS)
+LD_FLAGS  += $(REGS)
 
 C_INCLUDE_PATH=./lib/
 
@@ -46,10 +61,17 @@ OPTIONS += -DBACK_TO_TABLES
 
 #SRC += BootloaderAPITable.S
 
-# Additional source files from libraries
-LIB_SRC += src/AES/aes.c
-LIB_SRC += src/AES/aes256_ctr.c
-LIB_SRC += src/serial/serial1.c
+# Avrdude settings
+AVRDUDE_PORT       = /dev/ttyACM0
+AVRDUDE_PROGRAMMER = stk500v1
+AVRDUDE_FLAGS      = -b 19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
+
+
+# Some helpers to get all the .c and .h files.
+# $(TARGET) is included inside $(OBJECTS).
+LIBDIRS := $(addprefix ./, AES SERIAL)
+LIBOBJS := $(foreach lib, $(LIBDIRS), $(wildcard $(lib)/*.c))
+OBJECTS := $(wildcard ./*.c)
 
 # Bootloader address calculation formulas
 # Do not modify these macros, but rather modify the dependent values above.
@@ -63,11 +85,6 @@ BOOT_SECTION_LD_FLAG  = -Wl,--section-start=$(strip $(1))=$(call BOOT_SEC_OFFSET
 BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_trampolines, BootloaderAPI_Trampolines, 96)
 BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   32)
 BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
-
-# Avrdude settings
-AVRDUDE_PORT       = /dev/ttyACM0
-AVRDUDE_PROGRAMMER = stk500v1
-AVRDUDE_FLAGS      = -b 19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
 
 # Default target
 all:

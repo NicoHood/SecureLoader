@@ -67,7 +67,7 @@ const USB_Descriptor_Device_t DeviceDescriptor =
 	.Header                 = {.Size = sizeof(USB_Descriptor_Device_t), .Type = DTYPE_Device},
 
 	.USBSpecification       = VERSION_BCD(1,1,0),
-	.Class                  = USB_CSCP_NoDeviceClass,
+	.Class                  = USB_CSCP_NoDeviceClass, // TODO check
 	.SubClass               = USB_CSCP_NoDeviceSubclass,
 	.Protocol               = USB_CSCP_NoDeviceProtocol,
 
@@ -77,7 +77,7 @@ const USB_Descriptor_Device_t DeviceDescriptor =
 	.ProductID              = PRODUCTID,
 	.ReleaseNumber          = VERSION_BCD(0,0,1),
 
-	.ManufacturerStrIndex   = NO_DESCRIPTOR,
+	.ManufacturerStrIndex   = NO_DESCRIPTOR, //TODO add
 	.ProductStrIndex        = NO_DESCRIPTOR,
 	.SerialNumStrIndex      = NO_DESCRIPTOR,
 
@@ -175,7 +175,7 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 		Address = &ConfigurationDescriptor.HID_VendorHID;
 		Size    = sizeof(USB_HID_Descriptor_HID_t);
 	}
-	// TODO vendor and product strings?
+	// TODO vendor and product strings? TODO internal string
 	else
 	{
 		Address = &HIDReport;
