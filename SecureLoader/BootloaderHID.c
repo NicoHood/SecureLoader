@@ -145,6 +145,9 @@ int main(void)
 	/* Enable global interrupts so that the USB stack can function */
 	GlobalInterruptEnable();
 
+	// TODO Wait for USB VBUS information connection (first enable interrupts)
+	//while(!USB_Device_ConfigurationNumber);
+
 	//uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
 
   // Simpler version of USB_USBTask()
