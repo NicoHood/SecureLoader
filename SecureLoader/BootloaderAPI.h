@@ -41,7 +41,7 @@
 		#include <avr/boot.h>
 		#include <stdbool.h>
 
-		#include <LUFA/Common/Common.h>
+		//#include <LUFA/Common/Common.h>
 
 		#if (FLASHEND > USHRT_MAX)
 		typedef uint32_t address_size_t;
