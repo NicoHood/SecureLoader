@@ -37,6 +37,13 @@ LD_FLAGS  += -flto -fuse-linker-plugin
 CC_FLAGS  += -fno-split-wide-types
 CC_FLAGS  += -fno-tree-scev-cprop
 
+# This flag is required for bootloaders as GCC will emit invalid jump table
+# assembly code for devices with large amounts of flash; the jump table target
+# is extracted from FLASH without using the correct ELPM instruction, resulting
+# in a pseudo-random jump target.
+# TODO wait for dmbs to include this fix?
+CC_FLAGS  += -fno-jump-tables
+
 # Reserved registers for faster USB-Serial convertion
 # The lower, the better (except 0 and 1)
 # r2: USB_Device_ConfigurationNumber
