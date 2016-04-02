@@ -35,7 +35,7 @@
 		#include "Common/Common.h"
 		#include "USBMode.h" // USB_SERIES
 		#include "USBInterrupt.h" // USB_INT_Enable()
-		#include "DeviceStandardReq.h" // USB_Device_ConfigurationNumber
+		#include "USBGlobals.h" // USB_Device_ConfigurationNumber
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)

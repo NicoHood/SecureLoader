@@ -47,7 +47,7 @@ CC_FLAGS  += -fno-jump-tables
 # Reserved registers for faster USB-Serial convertion
 # The lower, the better (except 0 and 1)
 # r2: USB_Device_ConfigurationNumber
-REGS      += -ffixed-r2
+#REGS      += -ffixed-r2
 #REGS      += -ffixed-r3
 #REGS      += -ffixed-r4
 #REGS      += -ffixed-r4 -ffixed-r5 -ffixed-r6

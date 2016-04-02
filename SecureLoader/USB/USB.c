@@ -29,12 +29,13 @@
 */
 
 #define  __INCLUDE_FROM_USB_DRIVER
-// TODO remove includes
-#include "USBInterrupt.h"
-#include "USBMode.h"
-#include "Device.h"
-#include "Endpoint.h"
 
+#include "USBGlobals.h"   // Headers
+#include "Endpoint.h"     // Endpoint_ConfigureEndpoint
+#include "USBInterrupt.h" // USB_INT_ClearAllInterrupts
+
+USB_Request_Header_t USB_ControlRequest;
+uint8_t USB_Device_ConfigurationNumber;
 
 ISR(USB_GEN_vect, ISR_BLOCK)
 {
@@ -55,7 +56,6 @@ ISR(USB_GEN_vect, ISR_BLOCK)
 		#endif
 	}
 }
-
 
 #if defined(INTERRUPT_CONTROL_ENDPOINT)
 ISR(USB_COM_vect, ISR_BLOCK)

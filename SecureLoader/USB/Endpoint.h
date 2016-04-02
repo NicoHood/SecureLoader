@@ -839,8 +839,41 @@
 							 *  \param[in] Buffer  Pointer to the source data buffer to read from.
 							 *  \param[in] Length  Number of bytes to read for the currently selected endpoint into the buffer.
 				 		 	 */
-							void Endpoint_Write_Control_Stream_LE(const void* const Buffer,
+							static inline void Endpoint_Write_Control_Stream_LE(const void* const Buffer,
 																											 uint16_t Length) ATTR_NON_NULL_PTR_ARG(1);
+						  static inline void Endpoint_Write_Control_Stream_LE (const void* const Buffer, uint16_t Length)
+							{
+								uint8_t* DataStream     = ((uint8_t*)Buffer);
+
+							  // Do not send more data than the host requests
+								if (Length > USB_ControlRequest.wLength)
+							    Length = USB_ControlRequest.wLength;
+
+							  do
+							  {
+							    // Only send one Bank max
+							    uint8_t BytesToSend = FIXED_CONTROL_ENDPOINT_SIZE;
+							    if(Length < BytesToSend){
+							      BytesToSend = Length;
+							    }
+
+							    // Wait for endpoint to get ready
+						    //if(Endpoint_IsOUTReceived()){
+							    //  return;
+							    //}
+
+							    // Send Bank
+							    while (BytesToSend--)
+							    {
+							      Endpoint_Write_8(*DataStream);
+							      DataStream++;
+							      Length--;
+							    }
+							    Endpoint_ClearIN();
+							  }
+							  while (Length);
+							}
+
 
 
 	/* Disable C linkage for C++ Compilers: */

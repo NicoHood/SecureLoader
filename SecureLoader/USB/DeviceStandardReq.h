@@ -37,7 +37,7 @@
 		#include "StdDescriptors.h"
 		#include "StdRequestType.h"
 		//#include "USBController.h"
-		#include "Endpoint.h"
+		//#include "Endpoint.h"
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)
@@ -48,32 +48,6 @@
 		#if !defined(__INCLUDE_FROM_USB_DRIVER)
 			#error Do not include this file directly. Include LUFA/Drivers/USB/USB.h instead.
 		#endif
-
-	/* Public Interface - May be used in end-application: */
-		/* Global Variables: */
-			/** Indicates the currently set configuration number of the device. USB devices may have several
-			 *  different configurations which the host can select between; this indicates the currently selected
-			 *  value, or 0 if no configuration has been selected.
-			 *
-			 *  \attention This variable should be treated as read-only in the user application, and never manually
-			 *             changed in value.
-			 *
-			 *  \ingroup Group_Device
-			 */
-			 // TODO improve
-			//extern uint8_t USB_Device_ConfigurationNumber;
-			register uint8_t USB_Device_ConfigurationNumber asm("r2");
-			//#define USB_Device_ConfigurationNumber GPIOR0
-
-			/** Structure containing the last received Control request when in Device mode (for use in user-applications
-			 *  inside of the \ref EVENT_USB_Device_ControlRequest() event, or for filling up with a control request to
-			 *  issue when in Host mode before calling \ref USB_Host_SendControlRequest().
-			 *
-			 *  \note The contents of this structure is automatically endian-corrected for the current CPU architecture.
-			 *
-			 *  \ingroup Group_USBManagement
-			 */
-			 extern USB_Request_Header_t USB_ControlRequest;
 
 	/* Private Interface - For use in library only: */
 		/* Function Prototypes: */
