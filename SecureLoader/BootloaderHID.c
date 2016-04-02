@@ -169,8 +169,10 @@ int main(void)
 /** Configures all hardware required for the bootloader. */
 static void SetupHardware(void)
 {
+#if F_CPU != F_USB
 	/* Disable clock division */
 	clock_prescale_set(clock_div_1);
+#endif
 
 	/* Relocate the interrupt vector table to the bootloader section */
 	MCUCR = (1 << IVCE);

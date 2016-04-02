@@ -42,6 +42,11 @@
 			extern "C" {
 		#endif
 
+	/* Preprocessor Checks: */
+		#if !defined(__INCLUDE_FROM_USB_DRIVER)
+			#error Do not include this file directly. Include LUFA/Drivers/USB/USB.h instead.
+		#endif
+
 	/* Preprocessor Checks and Defines: */
 		#if !defined(F_USB)
 			#error F_USB is not defined. You must define F_USB to the frequency of the unprescaled USB controller clock in your project makefile.

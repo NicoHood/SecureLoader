@@ -28,18 +28,13 @@
   this software.
 */
 
-/** \file
- *
- *  Header file for Descriptors.c.
- */
-
 #ifndef _DESCRIPTORS_H_
 #define _DESCRIPTORS_H_
 
 	/* Includes: */
 		#include "StdDescriptors.h" // USB_CONFIG_POWER_MA
-		#include "HIDClass.h" // HID_RI_USAGE_PAGE
-		#include "Endpoint.h" // ENDPOINT_DIR_IN
+		#include "HIDClass.h" 			// HID_RI_USAGE_PAGE
+		#include "Endpoint.h" 			// ENDPOINT_DIR_IN
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)

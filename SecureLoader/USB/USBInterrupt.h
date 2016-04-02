@@ -33,7 +33,7 @@
 
 	/* Includes: */
 		#include "Common/Common.h"
-		#include "USBMode.h"
+		#include "USBMode.h" // USB_SERIES
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)

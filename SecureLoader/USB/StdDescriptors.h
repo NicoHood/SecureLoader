@@ -28,24 +28,6 @@
   this software.
 */
 
-/** \file
- *  \brief Common standard USB Descriptor definitions for all architectures.
- *  \copydetails Group_StdDescriptors
- *
- *  \note This file should not be included directly. It is automatically included as needed by the USB driver
- *        dispatch header located in LUFA/Drivers/USB/USB.h.
- */
-
-/** \ingroup Group_USB
- *  \defgroup Group_StdDescriptors USB Descriptors
- *  \brief Standard USB Descriptor definitions.
- *
- *  Standard USB device descriptor defines and retrieval routines, for USB devices. This module contains
- *  structures and macros for the easy creation of standard USB descriptors in USB device projects.
- *
- *  @{
- */
-
 #ifndef __USBDESCRIPTORS_H__
 #define __USBDESCRIPTORS_H__
 

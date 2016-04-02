@@ -78,8 +78,6 @@
 			      Endpoint_SelectEndpoint((uint8_t)USB_ControlRequest.wIndex & ENDPOINT_EPNUM_MASK);
 
 			      CurrentStatus = Endpoint_IsStalled();
-
-			      Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 			      #endif
 
 			      break;
@@ -133,8 +131,6 @@
 									Endpoint_ResetDataToggle();
 								}
 							}
-
-							Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 						}
 
 						break;
@@ -142,8 +138,6 @@
 					default:
 						return;
 				}
-
-				Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 
 				Endpoint_ClearSETUP();
 
@@ -243,7 +237,6 @@
 				/* Setup HID Report Endpoint */
 				Endpoint_SelectEndpoint(HID_IN_EPADDR & ENDPOINT_EPNUM_MASK);
 				Endpoint_ConfigureEndpoint(HID_IN_EPADDR, EP_TYPE_INTERRUPT, HID_IN_EPSIZE, 1);
-				Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 #endif
 			}
 
@@ -324,6 +317,9 @@
 							break;
 					}
 				}
+
+				// Select control endpoint again
+				Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 
 				// TODO simpler call stall
 				if (Endpoint_IsSETUPReceived())

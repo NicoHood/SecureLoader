@@ -33,7 +33,7 @@
 
 	/* Includes: */
 		#include "Common/Common.h"
-		#include "USBMode.h" // USB_SERIES
+		#include "USBMode.h" 		// USB_SERIES
 		#include "USBGlobals.h" // USB_ControlRequest
 
 	/* Enable C linkage for C++ Compilers: */
@@ -161,30 +161,6 @@
 						#define ENDPOINT_TOTAL_ENDPOINTS            1
 					#endif
 
-				/* Enums: */
-					/** Enum for the possible error return codes of the \ref Endpoint_WaitUntilReady() function.
-					 *
-					 *  \ingroup Group_EndpointRW_AVR8
-					 */
-					enum Endpoint_WaitUntilReady_ErrorCodes_t
-					{
-						ENDPOINT_READYWAIT_NoError                 = 0, /**< Endpoint is ready for next packet, no error. */
-						ENDPOINT_READYWAIT_EndpointStalled         = 1, /**< The endpoint was stalled during the stream
-						                                                 *   transfer by the host or device.
-						                                                 */
-						ENDPOINT_READYWAIT_DeviceDisconnected      = 2,	/**< Device was disconnected from the host while
-						                                                 *   waiting for the endpoint to become ready.
-						                                                 */
-						ENDPOINT_READYWAIT_BusSuspended            = 3, /**< The USB bus has been suspended by the host and
-						                                                 *   no USB endpoint traffic can occur until the bus
-						                                                 *   has resumed.
-						                                                 */
-						ENDPOINT_READYWAIT_Timeout                 = 4, /**< The host failed to accept or send the next packet
-						                                                 *   within the software timeout period set by the
-						                                                 *   \ref USB_STREAM_TIMEOUT_MS macro.
-						                                                 */
-					};
-
 				/* Inline Functions: */
 					/** Indicates the number of bytes currently stored in the current endpoint's selected bank.
 					 *
@@ -201,32 +177,6 @@
 							return (((uint16_t)UEBCHX << 8) | UEBCLX);
 						#elif defined(USB_SERIES_2_AVR)
 							return UEBCLX;
-						#endif
-					}
-
-					/** Determines the currently selected endpoint's direction.
-					 *
-					 *  \return The currently selected endpoint's direction, as a \c ENDPOINT_DIR_* mask.
-					 */
-					static inline uint8_t Endpoint_GetEndpointDirection(void) ATTR_WARN_UNUSED_RESULT ATTR_ALWAYS_INLINE;
-					static inline uint8_t Endpoint_GetEndpointDirection(void)
-					{
-						return (UECFG0X & (1 << EPDIR)) ? ENDPOINT_DIR_IN : ENDPOINT_DIR_OUT;
-					}
-
-					/** Get the endpoint address of the currently selected endpoint. This is typically used to save
-					 *  the currently selected endpoint so that it can be restored after another endpoint has been
-					 *  manipulated.
-					 *
-					 *  \return Index of the currently selected endpoint.
-					 */
-					static inline uint8_t Endpoint_GetCurrentEndpoint(void) ATTR_WARN_UNUSED_RESULT ATTR_ALWAYS_INLINE;
-					static inline uint8_t Endpoint_GetCurrentEndpoint(void)
-					{
-						#if !defined(CONTROL_ONLY_DEVICE)
-							return ((UENUM & ENDPOINT_EPNUM_MASK) | Endpoint_GetEndpointDirection());
-						#else
-							return ENDPOINT_CONTROLEP;
 						#endif
 					}
 
@@ -285,36 +235,6 @@
 					static inline bool Endpoint_IsEnabled(void)
 					{
 						return ((UECONX & (1 << EPEN)) ? true : false);
-					}
-
-					/** Retrieves the number of busy banks in the currently selected endpoint, which have been queued for
-					 *  transmission via the \ref Endpoint_ClearIN() command, or are awaiting acknowledgment via the
-					 *  \ref Endpoint_ClearOUT() command.
-					 *
-					 *  \ingroup Group_EndpointPacketManagement_AVR8
-					 *
-					 *  \return Total number of busy banks in the selected endpoint.
-					 */
-					static inline uint8_t Endpoint_GetBusyBanks(void) ATTR_ALWAYS_INLINE ATTR_WARN_UNUSED_RESULT;
-					static inline uint8_t Endpoint_GetBusyBanks(void)
-					{
-						return (UESTA0X & (0x03 << NBUSYBK0));
-					}
-
-					/** Aborts all pending IN transactions on the currently selected endpoint, once the bank
-					 *  has been queued for transmission to the host via \ref Endpoint_ClearIN(). This function
-					 *  will terminate all queued transactions, resetting the endpoint banks ready for a new
-					 *  packet.
-					 *
-					 *  \ingroup Group_EndpointPacketManagement_AVR8
-					 */
-					static inline void Endpoint_AbortPendingIN(void)
-					{
-						while (Endpoint_GetBusyBanks() != 0)
-						{
-							UEINTX |= (1 << RXOUTI);
-							while (UEINTX & (1 << RXOUTI));
-						}
 					}
 
 					/** Determines if the currently selected endpoint may be read from (if data is waiting in the endpoint
@@ -528,20 +448,6 @@
 						UEDATX = Data;
 					}
 
-					/** Discards one byte from the currently selected endpoint's bank, for OUT direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 */
-					static inline void Endpoint_Discard_8(void) ATTR_ALWAYS_INLINE;
-					static inline void Endpoint_Discard_8(void)
-					{
-						uint8_t Dummy;
-
-						Dummy = UEDATX;
-
-						(void)Dummy;
-					}
-
 					/** Reads two bytes from the currently selected endpoint's bank in little endian format, for OUT
 					 *  direction endpoints.
 					 *
@@ -564,28 +470,6 @@
 						return Data.Value;
 					}
 
-					/** Reads two bytes from the currently selected endpoint's bank in big endian format, for OUT
-					 *  direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 *
-					 *  \return Next two bytes in the currently selected endpoint's FIFO buffer.
-					 */
-					static inline uint16_t Endpoint_Read_16_BE(void) ATTR_WARN_UNUSED_RESULT ATTR_ALWAYS_INLINE;
-					static inline uint16_t Endpoint_Read_16_BE(void)
-					{
-						union
-						{
-							uint16_t Value;
-							uint8_t  Bytes[2];
-						} Data;
-
-						Data.Bytes[1] = UEDATX;
-						Data.Bytes[0] = UEDATX;
-
-						return Data.Value;
-					}
-
 					/** Writes two bytes to the currently selected endpoint's bank in little endian format, for IN
 					 *  direction endpoints.
 					 *
@@ -598,35 +482,6 @@
 					{
 						UEDATX = (Data & 0xFF);
 						UEDATX = (Data >> 8);
-					}
-
-					/** Writes two bytes to the currently selected endpoint's bank in big endian format, for IN
-					 *  direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 *
-					 *  \param[in] Data  Data to write to the currently selected endpoint's FIFO buffer.
-					 */
-					static inline void Endpoint_Write_16_BE(const uint16_t Data) ATTR_ALWAYS_INLINE;
-					static inline void Endpoint_Write_16_BE(const uint16_t Data)
-					{
-						UEDATX = (Data >> 8);
-						UEDATX = (Data & 0xFF);
-					}
-
-					/** Discards two bytes from the currently selected endpoint's bank, for OUT direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 */
-					static inline void Endpoint_Discard_16(void) ATTR_ALWAYS_INLINE;
-					static inline void Endpoint_Discard_16(void)
-					{
-						uint8_t Dummy;
-
-						Dummy = UEDATX;
-						Dummy = UEDATX;
-
-						(void)Dummy;
 					}
 
 					/** Reads four bytes from the currently selected endpoint's bank in little endian format, for OUT
@@ -653,30 +508,6 @@
 						return Data.Value;
 					}
 
-					/** Reads four bytes from the currently selected endpoint's bank in big endian format, for OUT
-					 *  direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 *
-					 *  \return Next four bytes in the currently selected endpoint's FIFO buffer.
-					 */
-					static inline uint32_t Endpoint_Read_32_BE(void) ATTR_WARN_UNUSED_RESULT ATTR_ALWAYS_INLINE;
-					static inline uint32_t Endpoint_Read_32_BE(void)
-					{
-						union
-						{
-							uint32_t Value;
-							uint8_t  Bytes[4];
-						} Data;
-
-						Data.Bytes[3] = UEDATX;
-						Data.Bytes[2] = UEDATX;
-						Data.Bytes[1] = UEDATX;
-						Data.Bytes[0] = UEDATX;
-
-						return Data.Value;
-					}
-
 					/** Writes four bytes to the currently selected endpoint's bank in little endian format, for IN
 					 *  direction endpoints.
 					 *
@@ -691,39 +522,6 @@
 						UEDATX = (Data >> 8);
 						UEDATX = (Data >> 16);
 						UEDATX = (Data >> 24);
-					}
-
-					/** Writes four bytes to the currently selected endpoint's bank in big endian format, for IN
-					 *  direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 *
-					 *  \param[in] Data  Data to write to the currently selected endpoint's FIFO buffer.
-					 */
-					static inline void Endpoint_Write_32_BE(const uint32_t Data) ATTR_ALWAYS_INLINE;
-					static inline void Endpoint_Write_32_BE(const uint32_t Data)
-					{
-						UEDATX = (Data >> 24);
-						UEDATX = (Data >> 16);
-						UEDATX = (Data >> 8);
-						UEDATX = (Data &  0xFF);
-					}
-
-					/** Discards four bytes from the currently selected endpoint's bank, for OUT direction endpoints.
-					 *
-					 *  \ingroup Group_EndpointPrimitiveRW_AVR8
-					 */
-					static inline void Endpoint_Discard_32(void) ATTR_ALWAYS_INLINE;
-					static inline void Endpoint_Discard_32(void)
-					{
-						uint8_t Dummy;
-
-						Dummy = UEDATX;
-						Dummy = UEDATX;
-						Dummy = UEDATX;
-						Dummy = UEDATX;
-
-						(void)Dummy;
 					}
 
 					/** Configures the specified endpoint address with the given endpoint type, bank size and number of hardware
@@ -838,10 +636,10 @@
 				    // Wait for endpoint to get ready
 						while(!Endpoint_IsINReady());
 
-						// TODO teensy aborts with this check
-			    	//if(Endpoint_IsOUTReceived()){
-				    //  return;
-				    //}
+						// Stop if PC wants to abort
+			    	if(Endpoint_IsOUTReceived()){
+				      return;
+				    }
 
 				    // Send Bank
 				    while (BytesToSend--)
