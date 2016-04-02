@@ -48,10 +48,6 @@
 			#error Do not include this file directly. Include LUFA/Drivers/USB/USB.h instead.
 		#endif
 
-		// TODO prototype for:
-		//void EVENT_USB_Device_ControlRequest(void);
-
-
 	/* Private Interface - For use in library only: */
 			// USB2.0 section 9.4.5 page 254
 			static inline void USB_Device_GetStatus(void);
@@ -241,7 +237,29 @@
 			}
 
 
-		/* Public Interface - May be used in end-application: */
+	/* Public Interface - May be used in end-application: */
+		/** Event for control requests. This event fires when a the USB host issues a control request
+			*  to the mandatory device control endpoint (of address 0). This may either be a standard
+			*  request that the library may have a handler code for internally, or a class specific request
+			*  issued to the device which must be handled appropriately. If a request is not processed in the
+			*  user application via this event, it will be passed to the library for processing internally
+			*  if a suitable handler exists.
+			*
+			*  This event is time-critical; each packet within the request transaction must be acknowledged or
+			*  sent within 50ms or the host will abort the transfer.
+			*
+			*  The library internally handles all standard control requests with the exceptions of SYNC FRAME,
+			*  SET DESCRIPTOR and SET INTERFACE. These and all other non-standard control requests will be left
+			*  for the user to process via this event if desired. If not handled in the user application or by
+			*  the library internally, unknown requests are automatically STALLed.
+			*
+			*  \note Requests should be handled in the same manner as described in the USB 2.0 Specification,
+			*        or appropriate class specification. In all instances, the library has already read the
+			*        request SETUP parameters into the \ref USB_ControlRequest structure which should then be used
+			*        by the application to determine how to handle the issued request.
+			*/
+			static inline void EVENT_USB_Device_ControlRequest(void);
+		
 			static inline void USB_Device_ProcessControlRequest(void);
 			static inline void USB_Device_ProcessControlRequest(void)
 			{

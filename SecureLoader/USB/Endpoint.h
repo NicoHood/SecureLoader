@@ -642,7 +642,7 @@
 				    }
 
 				    // Send Bank
-				    while (BytesToSend--)
+				    while(BytesToSend--)
 				    {
 				      Endpoint_Write_8(*DataStream);
 				      DataStream++;

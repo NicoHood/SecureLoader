@@ -190,7 +190,7 @@ static void SetupHardware(void)
  *  the device from the USB host before passing along unhandled control requests to the library for processing
  *  internally.
  */
-void EVENT_USB_Device_ControlRequest(void)
+static inline void EVENT_USB_Device_ControlRequest(void)
 {
 	// Get input data length
 	// TODO also important for GET_Report?
