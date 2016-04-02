@@ -44,8 +44,9 @@
 
 		/* USB Device Mode Driver Related Tokens: */
 
-		#define FIXED_NUM_CONFIGURATIONS         1
-//		#define CONTROL_ONLY_DEVICE
+		#define FIXED_NUM_CONFIGURATIONS        1
+		#define FIXED_NUM_ENDPOINTS							1 // Excluding EP0
+//		#define CONTROL_ONLY_DEVICE //TODO
 //		#define INTERRUPT_CONTROL_ENDPOINT
 
 #endif

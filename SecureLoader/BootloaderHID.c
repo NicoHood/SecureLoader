@@ -86,7 +86,7 @@ typedef union{
 	uint8_t raw[0];
 	struct{
 		uint8_t BootloaderKey[32];
-		uint8_t cbcMac[AES256_CBC_LENGTH];
+		uint8_t Mac[AES256_CBC_LENGTH];
 	};
 } changeBootloaderKey_t;
 
@@ -112,26 +112,37 @@ static uint8_t BootloaderKeyRam[32];
 // AES256 CBC-MAC context variable
 static aes256CbcMacCtx_t ctx;
 
+#define PORTID_BUTTON				 PORTE6
+#define PORT_BUTTON          PORTE
+#define DDR_BUTTON           DDRE
+#define PIN_BUTTON           PINE
+
+static inline bool JumpToBootloader(void)
+{
+	// Pressing button starts the bootloader
+	DDR_BUTTON &= ~(1 << PORTID_BUTTON);
+	PORT_BUTTON |= (1 << PORTID_BUTTON);
+
+	// Check if low
+	return !(PIN_BUTTON & (1 << PORTID_BUTTON));
+}
+
 /** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
  *  start key has been loaded into \ref MagicBootKey. If the bootloader started via the watchdog and the key is valid,
  *  this will force the user application to start via a software jump.
  */
 void Application_Jump_Check(void)
 {
-	/* Turn off the watchdog */
+	// Turn off the watchdog
 	uint8_t mcusr_mirror = MCUSR;
   MCUSR = 0;
   wdt_disable();
 
-	/* If the reset source was the bootloader and the key is correct, clear it and jump to the application */
-	if (((mcusr_mirror & (1 << WDRF)) && (MagicBootKey == MAGIC_BOOT_KEY)) || (mcusr_mirror & (1 << PORF)))
-	{
-		/* Clear the boot key and jump to the user application */
-		MagicBootKey = 0;
+	// Don't run the user application if the reset vector is blank (no app loaded)
+	bool ApplicationValid = (pgm_read_word_near(0) != 0xFFFF);
 
-		// TODO check if sketch is present?? required?
-
-		// cppcheck-suppress constStatement
+	// Start apllication if available and no button was pressed at startup
+	if(ApplicationValid && !JumpToBootloader()){
 		((void (*)(void))0x0000)();
 	}
 }
@@ -148,8 +159,6 @@ int main(void)
 	/* Enable global interrupts so that the USB stack can function */
 	GlobalInterruptEnable();
 
-	//uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
-
 	// Process USB data
 	do{
 #if !defined(INTERRUPT_CONTROL_ENDPOINT)
@@ -157,13 +166,10 @@ int main(void)
 #endif
 	} while (RunBootloader);
 
-	/* Disconnect from the host - USB interface will be reset later along with the AVR */
+	// Disconnect from the host - USB interface will be reset later along with the AVR
 	USB_Detach();
 
-	/* Unlock the forced application start mode of the bootloader if it is restarted */
-	MagicBootKey = MAGIC_BOOT_KEY;
-
-	/* Enable the watchdog and force a timeout to reset the AVR */
+	// Enable the watchdog and force a timeout to reset the AVR
 	wdt_enable(WDTO_250MS);
 
 	for (;;);
@@ -180,9 +186,6 @@ static void SetupHardware(void)
 	/* Relocate the interrupt vector table to the bootloader section */
 	MCUCR = (1 << IVCE);
 	MCUCR = (1 << IVSEL);
-
-	// TODO remove debug serial
-	//uart_init();
 
 	/* Initialize USB subsystem */
 	USB_Init();
@@ -241,29 +244,35 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			if(0){
 				//TODO remove
 			}
-			else if(length == sizeof_member(SetFlashPage_t, PageAddress))
-			{
-				// Interpret data SetFlashPage_t
-				SetFlashPage_t* SetFlashPage = (SetFlashPage_t*)USB_Buffer;
-				uint16_t PageAddress = SetFlashPage->PageAddress;
-
-				// Check if the command is a program page command, or a start application command.
-				// Do not validate PageAddress, we do this in the GetReport request.
-				if (PageAddress == COMMAND_STARTAPPLICATION) {
-					RunBootloader = false;
-				}
-			}
+			// else if(length == sizeof_member(SetFlashPage_t, PageAddress))
+			// {
+			// 	// Interpret data SetFlashPage_t
+			// 	SetFlashPage_t* SetFlashPage = (SetFlashPage_t*)USB_Buffer;
+			// 	uint16_t PageAddress = SetFlashPage->PageAddress;
+			//
+			// 	// Check if the command is a program page command, or a start application command.
+			// 	// Do not validate PageAddress, we do this in the GetReport request.
+			// 	if (PageAddress == COMMAND_STARTAPPLICATION) {
+			// 		RunBootloader = false;
+			// 	}
+			// }
 			// Process ProgrammFlashPage command
 			else if(length == sizeof(ProgrammFlashPage_t))
 			{
 				// Interpret data as ProgrammFlashPage_t
 				ProgrammFlashPage_t* ProgrammFlashPage = (ProgrammFlashPage_t*)USB_Buffer;
+				uint16_t InputPageAddress = ProgrammFlashPage->PageAddress;
+
+				// TODO move to feature request?
+				if (InputPageAddress == COMMAND_STARTAPPLICATION) {
+					RunBootloader = false;
+				}
 
 				// Read in the write destination address
 				#if (FLASHEND > USHRT_MAX)
-				uint32_t PageAddress = ((uint32_t)ProgrammFlashPage->PageAddress << 8);
+				uint32_t PageAddress = ((uint32_t)InputPageAddress << 8);
 				#else
-				uint16_t PageAddress = ProgrammFlashPage->PageAddress;
+				uint16_t PageAddress = InputPageAddress;
 				#endif
 
 				// Do not overwrite the bootloader or write out of bounds
@@ -279,7 +288,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			  for (uint16_t i=0; i<dataLen; i+=AES256_CBC_LENGTH)
 			  {
 			    // Decrypt next block
-			    aes256_dec(ProgrammFlashPage->cbcMac, &(ctx));
+			    aes256_dec(ProgrammFlashPage->cbcMac, &(ctx.aesCtx));
 
 			    // XOR cbcMac with data
 			    aesXorVectors(ProgrammFlashPage->cbcMac, ProgrammFlashPage->raw + dataLen - i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
@@ -287,6 +296,8 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 
 				// Check if CBC-MAC matches
 				for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+					// TODO for security reasons the padding should also be checked if zero
+					// Move the cbc mac at the beginning to check them together
 					if(ProgrammFlashPage->cbcMac[i] != 0x00){
 						Endpoint_StallTransaction();
 						return;
@@ -338,32 +349,42 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			// Process changeBootloaderKeyRam command
 			else if(length == sizeof(changeBootloaderKey_t))
 			{
-				return;
 				// Interpret data as ProgrammFlashPage_t
 				changeBootloaderKey_t* changeBootloaderKey = (changeBootloaderKey_t*)USB_Buffer;
 
+				// Decrypt all blocks
 				for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
-					// Decrypt next block
 			    aes256_dec(changeBootloaderKey->raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
 				}
+				// aes256_dec(changeBootloaderKey->raw + (0 * AES256_CBC_LENGTH), &(ctx.aesCtx));
+				// aes256_dec(changeBootloaderKey->raw + (1 * AES256_CBC_LENGTH), &(ctx.aesCtx));
+				// aes256_dec(changeBootloaderKey->raw + (2 * AES256_CBC_LENGTH), &(ctx.aesCtx));
 
-				//hexdump(changeBootloaderKey->raw, sizeof(changeBootloaderKey_t));
-				return;
-
-
-
-
-				// Save key and initialization vector inside context
-				// Calculate CBC-MAC
-				aes256CbcMacInit(&ctx, BootloaderKeyRam);
-				aes256CbcMacUpdate(&ctx, changeBootloaderKey->raw, sizeof(changeBootloaderKey_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
-
-				// Only continue if CBC-MAC matches
-				if(aes256CbcMacCompare(&ctx, changeBootloaderKey->cbcMac)){
-					// TODO timeout, prevent brute force
-					Endpoint_StallTransaction();
-					return;
+				// Check if MAC matches (0 -16)
+				for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+					if(changeBootloaderKey->Mac[i] != i){
+						// TODO this stall is ignored. it will not change the key, but will not cause an error
+						Endpoint_StallTransaction();
+						return;
+					}
 				}
+
+				// TODO reimplement for 8 bit
+				// Write new BootloaderKey to EEPROM
+				eeprom_update_block (changeBootloaderKey->raw, &BootloaderKeyEEPROM, sizeof(BootloaderKeyEEPROM));
+
+
+				// // Save key and initialization vector inside context
+				// // Calculate CBC-MAC
+				// aes256CbcMacInit(&ctx, BootloaderKeyRam);
+				// aes256CbcMacUpdate(&ctx, changeBootloaderKey->raw, sizeof(changeBootloaderKey_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
+				//
+				// // Only continue if CBC-MAC matches
+				// if(aes256CbcMacCompare(&ctx, changeBootloaderKey->Mac)){
+				// 	// TODO timeout, prevent brute force
+				// 	Endpoint_StallTransaction();
+				// 	return;
+				// }
 
 				// Only continue if CBC-MAC matches
 				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKeyRam,
@@ -379,7 +400,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				//TODO decrypt key
 
 				// Acknowledge SetReport request
-				Endpoint_ClearStatusStageHostToDevice();
+				//Endpoint_ClearStatusStageHostToDevice();
 			}
 			// No valid data length found
 			else{

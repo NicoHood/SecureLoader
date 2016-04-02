@@ -38,7 +38,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include "../src/AES/aes256_ctr.h"
+#include "../AES/aes256.h"
 
 void usage(void)
 {
@@ -160,8 +160,37 @@ int main(int argc, char **argv)
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	};
 
+	// Data to change the Bootloader Key
+	typedef union{
+		uint8_t raw[0];
+		struct{
+			uint8_t BootloaderKey[32];
+			uint8_t Mac[AES256_CBC_LENGTH];
+		};
+	} changeBootloaderKey_t;
+
+	changeBootloaderKey_t CK;
+	memcpy(&CK, key2, sizeof(key2));
+
+	for(int i = 0; i< AES256_CBC_LENGTH; i++){
+		CK.Mac[i] = i;
+	}
+
 	// Declare aes256 context variable
 	static aes256CbcMacCtx_t ctx;
+
+	// Calculate and save CBC-MAC
+	aes256CbcMacInit(&ctx, key);
+
+	// Encrypt all blocks (with old key)
+	for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
+		aes256_enc(CK.raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
+	}
+
+	printf_verbose("Changing key!");
+	teensy_write(&CK, sizeof(CK), 3.0);
+
+	printf_verbose("Key Changed!");
 
 	for (addr = 0; addr < code_size; addr += block_size) {
 		printf_verbose("\n%d", addr);
@@ -191,7 +220,7 @@ int main(int argc, char **argv)
 
 		// Save key and initialization vector inside context
 		// Calculate and save CBC-MAC
-		aes256CbcMacInit(&ctx, key);
+		aes256CbcMacInit(&ctx, key2);
 		aes256CbcMacUpdate(&ctx, buf, block_size + AES256_CBC_LENGTH);
 		memcpy(buf + block_size + AES256_CBC_LENGTH, ctx.cbcMac, AES256_CBC_LENGTH);
 
@@ -210,8 +239,8 @@ int main(int argc, char **argv)
 		buf[0] = 0xFF;
 		buf[1] = 0xFF;
 		memset(buf + 2, 0, sizeof(buf) - 2);
-		//teensy_write(buf, block_size + 2 + AES256_CBC_LENGTH, 0.25);
-		teensy_write(buf, 2, 0.25);
+		teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, 0.25);
+		//teensy_write(buf, 2, 0.25);
 	}
 	teensy_close();
 	return 0;

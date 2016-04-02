@@ -106,10 +106,8 @@
 						{
 							uint8_t EndpointIndex = ((uint8_t)USB_ControlRequest.wIndex & ENDPOINT_EPNUM_MASK);
 
-							// We ignore errors for non existing endpoints
-							//TODO actually only 1 endpoint is possible here
-							//  || EndpointIndex > ENDPOINT_TOTAL_ENDPOINTS
-							if (EndpointIndex == ENDPOINT_CONTROLEP)
+							// Stop if the endpoint is not used
+							if (EndpointIndex == ENDPOINT_CONTROLEP || EndpointIndex > FIXED_NUM_ENDPOINTS)
 								return;
 
 							Endpoint_SelectEndpoint(EndpointIndex);
@@ -259,7 +257,7 @@
 			*        by the application to determine how to handle the issued request.
 			*/
 			static inline void EVENT_USB_Device_ControlRequest(void);
-		
+
 			static inline void USB_Device_ProcessControlRequest(void);
 			static inline void USB_Device_ProcessControlRequest(void)
 			{
@@ -319,7 +317,7 @@
 						case REQ_GetConfiguration:
 							if (bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE))
 							{
-								return; // TODO doesnt seem to be essential
+								// TODO doesnt seem to be essential
 							  USB_Device_GetConfiguration();
 							}
 							break;

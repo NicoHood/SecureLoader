@@ -53,10 +53,37 @@
 		void    BootloaderAPI_ErasePage(const address_size_t Address);
 		void    BootloaderAPI_WritePage(const address_size_t Address);
 		void    BootloaderAPI_FillWord(const address_size_t Address, const uint16_t Word);
-		void    BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words);
+		static inline void    BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words);
 		uint8_t BootloaderAPI_ReadSignature(const uint16_t Address);
 		uint8_t BootloaderAPI_ReadFuse(const uint16_t Address);
 		uint8_t BootloaderAPI_ReadLock(void);
 		void    BootloaderAPI_WriteLock(const uint8_t LockBits);
+
+		static inline void BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words)
+		{
+			// TODO only write data if its new, to preserv flash destruction on replay attacks
+			// add check inside loop
+			// move erase down (works)
+
+			/* Erase the given FLASH page, ready to be programmed */
+			boot_page_erase(Address);
+			boot_spm_busy_wait();
+
+			/* Write each of the FLASH page's bytes in sequence */
+			uint8_t PageWord;
+			for (PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++)
+			{
+				/* Write the next data word to the FLASH page */
+				boot_page_fill(Address + ((uint16_t)PageWord << 1), *Words);
+				Words++;
+			}
+
+			/* Write the filled FLASH page to memory */
+			boot_page_write(Address);
+			boot_spm_busy_wait();
+
+			/* Re-enable RWW section */
+			boot_rww_enable();
+		}
 
 #endif
