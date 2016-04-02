@@ -28,48 +28,47 @@
   this software.
 */
 
-/** \file
- *
- *  Header file for BootloaderHID.c.
- */
+#define  __INCLUDE_FROM_USB_DRIVER
+// TODO remove includes
+#include "USBInterrupt.h"
+#include "USBMode.h"
+#include "Device.h"
+#include "Endpoint.h"
 
-#ifndef _BOOTLOADERHID_H_
-#define _BOOTLOADERHID_H_
 
-	/* Includes: */
-		#include <avr/io.h>
-		#include <avr/wdt.h>
-		#include <avr/boot.h>
-		#include <avr/power.h>
-		#include <avr/interrupt.h>
-		#include <stdbool.h>
+ISR(USB_GEN_vect, ISR_BLOCK)
+{
+	// Get interrupt source and clear it
+	uint8_t UDINT_mirror = UDINT;
+	USB_INT_ClearAllInterrupts();
 
-		#include "Descriptors.h"
-		#include "AES/aes256_ctr.h"
-		#include "SERIAL/serial.h"
-		#include "BootloaderAPI.h"
+	// Reset Interrupt
+	if (UDINT_mirror & (1 << EORSTI))
+	{
+		USB_Device_ConfigurationNumber = 0;
 
-		#include <USB/USB.h>
+		Endpoint_ConfigureEndpoint(ENDPOINT_CONTROLEP, EP_TYPE_CONTROL,
+		                           FIXED_CONTROL_ENDPOINT_SIZE, 1);
 
-	/* Preprocessor Checks: */
-		#if !defined(__OPTIMIZE_SIZE__)
-			#error This bootloader requires that it be optimized for size, not speed, to fit into the target device. Change optimization settings and try again.
+		#if defined(INTERRUPT_CONTROL_ENDPOINT)
+		USB_INT_Enable(USB_INT_RXSTPI);
 		#endif
+	}
+}
 
-	/* Macros: */
-		/** Bootloader special address to start the user application */
-		#define COMMAND_STARTAPPLICATION   0xFFFF
 
-		/** Magic bootloader key to unlock forced application start mode. */
-		#define MAGIC_BOOT_KEY             0xDC42
+#if defined(INTERRUPT_CONTROL_ENDPOINT)
+ISR(USB_COM_vect, ISR_BLOCK)
+{
+	// TODO only do this once? or remove in sub function?
+	// Select control endpoint
+	Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 
-	/* Function Prototypes: */
-		static void SetupHardware(void);
-
-		void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
-
-		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_ControlRequest2(void);
-	  void USB_Device_ProcessControlRequestInline(void);
-
+	if (Endpoint_IsSETUPReceived()){
+		USB_Device_ProcessControlRequest();
+	}
+	#if !defined(CONTROL_ONLY_DEVICE)
+	#error Previous selected endpoints will not be restored. Add this feature or only use this if you know what you are doing. Remove this error to accept.
+	#endif
+}
 #endif

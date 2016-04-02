@@ -19,7 +19,7 @@ F_USB        = $(F_CPU)
 OPTIMIZATION = s
 TARGET       = BootloaderHID
 SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c $(LIBOBJS) $(LUFA_SRC_USB)
-LUFA_PATH    = ../lufa/LUFA
+DMBS_PATH    = ../dmbs/DMBS
 CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET)
 LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS)
 
@@ -58,6 +58,7 @@ OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067
 OPTIONS += -DBAUD=115200
 OPTIONS += -DBACK_TO_TABLES
+OPTIONS += -DF_USB=$(F_USB)
 
 #SRC += BootloaderAPITable.S
 
@@ -69,7 +70,7 @@ AVRDUDE_FLAGS      = -b 19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8
 
 # Some helpers to get all the .c and .h files.
 # $(TARGET) is included inside $(OBJECTS).
-LIBDIRS := $(addprefix ./, AES SERIAL)
+LIBDIRS := $(addprefix ./, AES SERIAL USB)
 LIBOBJS := $(foreach lib, $(LIBDIRS), $(wildcard $(lib)/*.c))
 OBJECTS := $(wildcard ./*.c)
 
@@ -89,14 +90,16 @@ BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  Boot
 # Default target
 all:
 
-# Include LUFA build script makefiles
-include $(LUFA_PATH)/Build/lufa_core.mk
-include $(LUFA_PATH)/Build/lufa_sources.mk
-include $(LUFA_PATH)/Build/lufa_build.mk
-include $(LUFA_PATH)/Build/lufa_cppcheck.mk
-include $(LUFA_PATH)/Build/lufa_doxygen.mk
-include $(LUFA_PATH)/Build/lufa_avrdude.mk
-include $(LUFA_PATH)/Build/lufa_atprogram.mk
+# Include DMBS build script makefiles
+include $(DMBS_PATH)/core.mk
+include $(DMBS_PATH)/gcc.mk
+include $(DMBS_PATH)/cppcheck.mk
+include $(DMBS_PATH)/doxygen.mk
+include $(DMBS_PATH)/dfu.mk
+include $(DMBS_PATH)/hid.mk
+include $(DMBS_PATH)/avrdude.mk
+include $(DMBS_PATH)/atprogram.mk
+
 
 noreboot:
 	cd HostLoaderApp && $(MAKE) && cd ..

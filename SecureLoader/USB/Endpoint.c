@@ -28,48 +28,39 @@
   this software.
 */
 
-/** \file
- *
- *  Header file for BootloaderHID.c.
- */
+#define  __INCLUDE_FROM_USB_DRIVER
 
-#ifndef _BOOTLOADERHID_H_
-#define _BOOTLOADERHID_H_
+#include "Endpoint.h"
 
-	/* Includes: */
-		#include <avr/io.h>
-		#include <avr/wdt.h>
-		#include <avr/boot.h>
-		#include <avr/power.h>
-		#include <avr/interrupt.h>
-		#include <stdbool.h>
+//TODO 8 bit length?
+void Endpoint_Write_Control_Stream_LE (const void* const Buffer,
+                            uint16_t Length)
+{
+	uint8_t* DataStream     = ((uint8_t*)Buffer);
+	bool     LastPacketFull = false;
 
-		#include "Descriptors.h"
-		#include "AES/aes256_ctr.h"
-		#include "SERIAL/serial.h"
-		#include "BootloaderAPI.h"
+  // TODO required? YES but why? -> descriptor
+	if (Length > USB_ControlRequest.wLength)
+	  Length = USB_ControlRequest.wLength;
+	else if (!(Length)) //TODO remove and change loop below
+	  Endpoint_ClearIN();
 
-		#include <USB/USB.h>
+	while (Length || LastPacketFull)
+	{
+		if (Endpoint_IsINReady())
+		{
+			uint16_t BytesInEndpoint = Endpoint_BytesInEndpoint(); //TODO only use 8 bit?
 
-	/* Preprocessor Checks: */
-		#if !defined(__OPTIMIZE_SIZE__)
-			#error This bootloader requires that it be optimized for size, not speed, to fit into the target device. Change optimization settings and try again.
-		#endif
+			while (Length && (BytesInEndpoint < FIXED_CONTROL_ENDPOINT_SIZE))
+			{
+				Endpoint_Write_8(*DataStream);
+				DataStream++;
+				Length--;
+				BytesInEndpoint++;
+			}
 
-	/* Macros: */
-		/** Bootloader special address to start the user application */
-		#define COMMAND_STARTAPPLICATION   0xFFFF
-
-		/** Magic bootloader key to unlock forced application start mode. */
-		#define MAGIC_BOOT_KEY             0xDC42
-
-	/* Function Prototypes: */
-		static void SetupHardware(void);
-
-		void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
-
-		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_ControlRequest2(void);
-	  void USB_Device_ProcessControlRequestInline(void);
-
-#endif
+			LastPacketFull = (BytesInEndpoint == FIXED_CONTROL_ENDPOINT_SIZE);
+			Endpoint_ClearIN();
+		}
+	}
+}

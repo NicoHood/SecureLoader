@@ -4,3 +4,6 @@
 [submodule "AVR-Development-Environment-Script"]
 	path = AVR-Development-Environment-Script
 	url = https://github.com/NicoHood/AVR-Development-Environment-Script.git
+[submodule "dmbs"]
+	path = dmbs
+	url = https://github.com/abcminiuser/dmbs.git

@@ -28,13 +28,6 @@
   this software.
 */
 
-/** \file
- *
- *  USB Device Descriptors, for library use when in USB device mode. Descriptors are special
- *  computer-readable structures which the host requests upon device enumeration, to determine
- *  the device's capabilities and functions.
- */
-
 #include "Descriptors.h"
 
 /** HID class report descriptor. This is a special descriptor constructed with values from the

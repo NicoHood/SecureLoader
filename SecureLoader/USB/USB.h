@@ -28,48 +28,17 @@
   this software.
 */
 
-/** \file
- *
- *  Header file for BootloaderHID.c.
- */
-
-#ifndef _BOOTLOADERHID_H_
-#define _BOOTLOADERHID_H_
-
-	/* Includes: */
-		#include <avr/io.h>
-		#include <avr/wdt.h>
-		#include <avr/boot.h>
-		#include <avr/power.h>
-		#include <avr/interrupt.h>
-		#include <stdbool.h>
-
-		#include "Descriptors.h"
-		#include "AES/aes256_ctr.h"
-		#include "SERIAL/serial.h"
-		#include "BootloaderAPI.h"
-
-		#include <USB/USB.h>
-
-	/* Preprocessor Checks: */
-		#if !defined(__OPTIMIZE_SIZE__)
-			#error This bootloader requires that it be optimized for size, not speed, to fit into the target device. Change optimization settings and try again.
-		#endif
+#ifndef __USB_H__
+#define __USB_H__
 
 	/* Macros: */
-		/** Bootloader special address to start the user application */
-		#define COMMAND_STARTAPPLICATION   0xFFFF
+		#define __INCLUDE_FROM_USB_DRIVER
 
-		/** Magic bootloader key to unlock forced application start mode. */
-		#define MAGIC_BOOT_KEY             0xDC42
-
-	/* Function Prototypes: */
-		static void SetupHardware(void);
-
-		void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
-
-		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_ControlRequest2(void);
-	  void USB_Device_ProcessControlRequestInline(void);
+	/* Includes: */
+		#include "HIDClass.h"
+		#include "StdRequestType.h"
+		#include "DeviceStandardReq.h"
+		#include "Device.h"
+		#include "USBController.h"
 
 #endif
