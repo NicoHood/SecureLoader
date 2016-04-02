@@ -515,7 +515,7 @@ ATmega32u4 fuse settings:
 * Low: 0xFF
 * High: 0xD8
 * Extended: 0xF8
-* Lock: 0xCC
+* Lock: 0x0C
 
 #### 3.6.2 Fuse Explanation
 - Ext. Crystal Osc.; Frequency 8.0- MHz; Start-up time: 16K CK + 65 ms;

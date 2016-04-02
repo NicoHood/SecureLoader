@@ -61,7 +61,6 @@ static inline void aes256CtrClean(aes256CtrCtx_t *ctx);
 // DEFINES
 #define AES256_CTR_LENGTH   16
 
-
 // DEFINES
 #define AES256_CBC_LENGTH   16
 

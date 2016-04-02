@@ -97,13 +97,17 @@ typedef union{
 static uint8_t USB_Buffer[MAX(MAX(sizeof(ReadFlashPage_t), sizeof(ProgrammFlashPage_t)),
 													sizeof(changeBootloaderKey_t))];
 
-// Bootloader Key TODO store in eeprom/progmem
-static uint8_t BootloaderKey[32] = {
+// TODO set proper eeprom address space via makefile
+static uint8_t EEMEM BootloaderKeyEEPROM[32] = {
 	0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
 	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
 	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7,
 	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
 };
+
+// Bootloader Key (local ram copy)
+static uint8_t BootloaderKeyRam[32];
+
 
 // AES256 CBC-MAC context variable
 static aes256CbcMacCtx_t ctx;
@@ -226,8 +230,18 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			// Acknowledge reading to the host
 			Endpoint_ClearOUT();
 
+			// (Re)load the eeprom bootloader key inside eeprom TODO move?
+			eeprom_read_block((void*)BootloaderKeyRam, (const void*)BootloaderKeyEEPROM, sizeof(BootloaderKeyRam));
+
+			// Initialize key schedule inside CTX
+			// TODO inline with eeprom read above
+			aes256_init(BootloaderKeyRam, &(ctx.aesCtx));
+
 			// Process SetFlashPage command
-			if(length == sizeof_member(SetFlashPage_t, PageAddress))
+			if(0){
+				//TODO remove
+			}
+			else if(length == sizeof_member(SetFlashPage_t, PageAddress))
 			{
 				// Interpret data SetFlashPage_t
 				SetFlashPage_t* SetFlashPage = (SetFlashPage_t*)USB_Buffer;
@@ -253,29 +267,50 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				#endif
 
 				// Do not overwrite the bootloader or write out of bounds
+				// TODO move too write function?
 			 	if (PageAddress >= BOOT_START_ADDR)
 				{
 					Endpoint_StallTransaction();
 					return;
 				}
 
-				memcpy(ctx.cbcMac, ProgrammFlashPage->cbcMac, sizeof(ctx.cbcMac));
+				// Loop will update cbcMac for each block
+				uint16_t dataLen = sizeof_member(ProgrammFlashPage_t, PageData) + sizeof_member(ProgrammFlashPage_t, cbcMac);
+			  for (uint16_t i=0; i<dataLen; i+=AES256_CBC_LENGTH)
+			  {
+			    // Decrypt next block
+			    aes256_dec(ProgrammFlashPage->cbcMac, &(ctx));
 
-				// Initialize key schedule inside CTX
-				aes256_init(BootloaderKey, &(ctx.aesCtx));
+			    // XOR cbcMac with data
+			    aesXorVectors(ProgrammFlashPage->cbcMac, ProgrammFlashPage->raw + dataLen - i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+			  }
 
-				// Only write data if CBC-MAC matches
-				if(aes256CbcMacReverseCompare(&ctx, ProgrammFlashPage->raw,
-				 	                 						sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac)))
-				{
-					// TODO timeout, prevent brute force
-					Endpoint_StallTransaction();
-					return;
+				// Check if CBC-MAC matches
+				for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+					if(ProgrammFlashPage->cbcMac[i] != 0x00){
+						Endpoint_StallTransaction();
+						return;
+					}
 				}
+
+
+				// memcpy(ctx.cbcMac, ProgrammFlashPage->cbcMac, sizeof(ctx.cbcMac));
+				//
+				// // Initialize key schedule inside CTX
+				// //aes256_init(BootloaderKeyRam, &(ctx.aesCtx));
+				//
+				// // Only write data if CBC-MAC matches
+				// if(aes256CbcMacReverseCompare(&ctx, ProgrammFlashPage->raw,
+				//  	                 						sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac)))
+				// {
+				// 	// TODO timeout, prevent brute force
+				// 	Endpoint_StallTransaction();
+				// 	return;
+				// }
 
 			  // // Save key and initialization vector inside context
 				// // Calculate CBC-MAC
-			  // aes256CbcMacInit(&ctx, BootloaderKey);
+			  // aes256CbcMacInit(&ctx, BootloaderKeyRam);
 				// aes256CbcMacUpdate(&ctx, ProgrammFlashPage->raw,
 				// 	                 sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
 				//
@@ -287,7 +322,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				// }
 
 				// // Only write data if CBC-MAC matches
-				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
+				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKeyRam,
 				// 																	ProgrammFlashPage->raw,
 				// 																	sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac),
 				// 																	ProgrammFlashPage->cbcMac))
@@ -300,22 +335,19 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				//uart_putchars("Programming\r\n");
 				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage->PageData);
 			}
-			// Process changeBootloaderKey command
+			// Process changeBootloaderKeyRam command
 			else if(length == sizeof(changeBootloaderKey_t))
 			{
 				return;
 				// Interpret data as ProgrammFlashPage_t
 				changeBootloaderKey_t* changeBootloaderKey = (changeBootloaderKey_t*)USB_Buffer;
 
-				// Initialize key schedule inside CTX
-				aes256_init(BootloaderKey, &(ctx.aesCtx));
-
 				for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
-					// Encrypt next block
-			    //aes256_dec(changeBootloaderKey->raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
+					// Decrypt next block
+			    aes256_dec(changeBootloaderKey->raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
 				}
 
-				hexdump(changeBootloaderKey->raw, sizeof(changeBootloaderKey_t));
+				//hexdump(changeBootloaderKey->raw, sizeof(changeBootloaderKey_t));
 				return;
 
 
@@ -323,7 +355,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 
 				// Save key and initialization vector inside context
 				// Calculate CBC-MAC
-				aes256CbcMacInit(&ctx, BootloaderKey);
+				aes256CbcMacInit(&ctx, BootloaderKeyRam);
 				aes256CbcMacUpdate(&ctx, changeBootloaderKey->raw, sizeof(changeBootloaderKey_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
 
 				// Only continue if CBC-MAC matches
@@ -334,7 +366,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				}
 
 				// Only continue if CBC-MAC matches
-				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
+				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKeyRam,
 				// 																	changeBootloaderKey->raw,
 				// 																	sizeof(changeBootloaderKey_t) - sizeof_member(ProgrammFlashPage_t, cbcMac),
 				// 																	changeBootloaderKey->cbcMac))

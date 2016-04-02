@@ -53,7 +53,8 @@ OPTIONS += -DF_USB=$(F_USB)
 # Avrdude settings
 AVRDUDE_PORT       = /dev/ttyACM0
 AVRDUDE_PROGRAMMER = stk500v1
-AVRDUDE_FLAGS      = -b 19200 -e -Ulock:w:0x3F:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
+AVRDUDE_FLAGS      = -b 19200 
+AVRDUDE_FUSES      = -Ulock:w:0x0C:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
 
 
 # Some helpers to get all the .c and .h files.
