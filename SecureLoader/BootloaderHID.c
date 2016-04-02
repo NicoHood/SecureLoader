@@ -147,15 +147,10 @@ int main(void)
 
 	//uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
 
-  // Simpler version of USB_USBTask()
-	// TODO use interrupt as alternative
+	// Process USB data
 	do{
 #if !defined(INTERRUPT_CONTROL_ENDPOINT)
-		// TODO why required?
-		Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
-
-		if (Endpoint_IsSETUPReceived())
-		  USB_Device_ProcessControlRequest();
+		USB_Device_ProcessControlRequest();
 #endif
 	} while (RunBootloader);
 

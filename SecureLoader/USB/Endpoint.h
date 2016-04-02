@@ -33,8 +33,8 @@
 
 	/* Includes: */
 		#include "Common/Common.h"
-		#include "Device.h" // DEVICE_STATE
-		#include "DeviceStandardReq.h" // USB_ControlRequest
+		#include "USBMode.h" // USB_SERIES
+		#include "USBGlobals.h" // USB_ControlRequest
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)
@@ -766,22 +766,14 @@
 																												const uint16_t Size,
 																												const uint8_t Banks)
 					{
-						uint8_t Number = (Address & ENDPOINT_EPNUM_MASK);
-
-						if (Number >= ENDPOINT_TOTAL_ENDPOINTS)
-							return;
-
 						const uint8_t UECFG0XData = ((Type << EPTYPE0) | ((Address & ENDPOINT_DIR_IN) ? (1 << EPDIR) : 0));
 						const uint8_t UECFG1XData = ((1 << ALLOC) | ((Banks > 1) ? (1 << EPBK0) : 0) | Endpoint_BytesToEPSizeMask(Size));
 
-						Endpoint_SelectEndpoint(Number);
 						Endpoint_EnableEndpoint();
 
 						UECFG1X = 0;
 						UECFG0X = UECFG0XData;
 						UECFG1X = UECFG1XData;
-
-						return;
 					}
 
 				/* External Variables: */

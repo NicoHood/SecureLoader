@@ -35,11 +35,8 @@
 		#define __INCLUDE_FROM_USB_DRIVER
 
 	/* Includes: */
-		#include "HIDClass.h"
-		#include "StdRequestType.h"
-		#include "DeviceStandardReq.h"
-		#include "Device.h"
-		#include "USBController.h"
-		#include "Descriptors.h"
+		#include "Endpoint.h"						// Endpoint_SelectEndpoint
+		#include "DeviceStandardReq.h" 	// USB_Device_ProcessControlRequest
+		#include "USBController.h"			// USB_Detach
 
 #endif
