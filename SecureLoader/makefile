@@ -13,7 +13,6 @@
 
 MCU          = atmega32u4
 ARCH         = AVR8
-BOARD        = LEONARDO
 F_CPU        = 16000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = s
@@ -33,7 +32,6 @@ BOOT_SECTION_SIZE_KB := 4
 COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
 CC_FLAGS  += -flto -fuse-linker-plugin
 LD_FLAGS  += -flto -fuse-linker-plugin
-#CC_FLAGS  += -mcall-prologues
 CC_FLAGS  += -fno-split-wide-types
 CC_FLAGS  += -fno-tree-scev-cprop
 
@@ -43,23 +41,6 @@ CC_FLAGS  += -fno-tree-scev-cprop
 # in a pseudo-random jump target.
 # TODO wait for dmbs to include this fix?
 CC_FLAGS  += -fno-jump-tables
-
-# Reserved registers for faster USB-Serial convertion
-# The lower, the better (except 0 and 1)
-# r2: USB_Device_ConfigurationNumber
-#REGS      += -ffixed-r2
-#REGS      += -ffixed-r3
-#REGS      += -ffixed-r4
-#REGS      += -ffixed-r4 -ffixed-r5 -ffixed-r6
-#-ffixed-r7
-#REGS      += -ffixed-r9 -ffixed-r10 -ffixed-r8
-#-ffixed-r12
-#REGS      += -ffixed-r12 -ffixed-r13 -ffixed-r14 -ffixed-r15
-#REGS      += -ffixed-r16 -ffixed-r17 -ffixed-r18 -ffixed-r19
-CC_FLAGS  += $(REGS)
-LD_FLAGS  += $(REGS)
-
-C_INCLUDE_PATH=./lib/
 
 OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067

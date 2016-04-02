@@ -781,8 +781,9 @@
 				 *  0 in the device. This value is set to the value indicated in the device descriptor in the user
 				 *  project once the USB interface is initialized into device mode.
 				 */
-				#define FIXED_CONTROL_ENDPOINT_SIZE      64
+					#define FIXED_CONTROL_ENDPOINT_SIZE      64
 
+				/* Public Interface - May be used in end-application: */
 					static inline void Endpoint_ClearStatusStageDeviceToHost(void);
 					static inline void Endpoint_ClearStatusStageDeviceToHost(void)
 					{
@@ -798,75 +799,61 @@
 						Endpoint_ClearIN();
 					}
 
-					// TODO remove
-					// static inline void Endpoint_ClearStatusStage(void);
-					// static inline void Endpoint_ClearStatusStage(void)
-					// {
-					// 	if (USB_ControlRequest.bmRequestType & REQDIR_DEVICETOHOST)
-					// 	{
-					// 		Endpoint_ClearStatusStageDeviceToHost();
-					// 	}
-					// 	else
-					// 	{
-					// 		Endpoint_ClearStatusStageHostToDevice();
-					// 	}
-					// }
+				/** Writes the given number of bytes to the CONTROL type endpoint from the given buffer in little endian,
+				 *  sending full packets to the host as needed. The host OUT acknowledgement is not automatically cleared
+				 *  in both failure and success states; the user is responsible for manually clearing the status OUT packet
+				 *  to finalize the transfer's status stage via the \ref Endpoint_ClearOUT() macro.
+				 *
+				 *  \note This function automatically sends the last packet in the data stage of the transaction; when the
+				 *        function returns, the user is responsible for clearing the <b>status</b> stage of the transaction.
+				 *        Note that the status stage packet is sent or received in the opposite direction of the data flow.
+				 *        \n\n
+				 *
+				 *  \note This routine should only be used on CONTROL type endpoints.
+				 *
+				 *  \warning Unlike the standard stream read/write commands, the control stream commands cannot be chained
+				 *           together; i.e. the entire stream data must be read or written at the one time.
+				 *
+				 *  \param[in] Buffer  Pointer to the source data buffer to read from.
+				 *  \param[in] Length  Number of bytes to read for the currently selected endpoint into the buffer.
+	 		 	 */
+				static inline void Endpoint_Write_Control_Stream_LE(const void* const Buffer,
+																								 uint16_t Length) ATTR_NON_NULL_PTR_ARG(1);
+			  static inline void Endpoint_Write_Control_Stream_LE (const void* const Buffer, uint16_t Length)
+				{
+					uint8_t* DataStream     = ((uint8_t*)Buffer);
 
-					/* Public Interface - May be used in end-application: */
-							/** Writes the given number of bytes to the CONTROL type endpoint from the given buffer in little endian,
-							 *  sending full packets to the host as needed. The host OUT acknowledgement is not automatically cleared
-							 *  in both failure and success states; the user is responsible for manually clearing the status OUT packet
-							 *  to finalize the transfer's status stage via the \ref Endpoint_ClearOUT() macro.
-							 *
-							 *  \note This function automatically sends the last packet in the data stage of the transaction; when the
-							 *        function returns, the user is responsible for clearing the <b>status</b> stage of the transaction.
-							 *        Note that the status stage packet is sent or received in the opposite direction of the data flow.
-							 *        \n\n
-							 *
-							 *  \note This routine should only be used on CONTROL type endpoints.
-							 *
-							 *  \warning Unlike the standard stream read/write commands, the control stream commands cannot be chained
-							 *           together; i.e. the entire stream data must be read or written at the one time.
-							 *
-							 *  \param[in] Buffer  Pointer to the source data buffer to read from.
-							 *  \param[in] Length  Number of bytes to read for the currently selected endpoint into the buffer.
-				 		 	 */
-							static inline void Endpoint_Write_Control_Stream_LE(const void* const Buffer,
-																											 uint16_t Length) ATTR_NON_NULL_PTR_ARG(1);
-						  static inline void Endpoint_Write_Control_Stream_LE (const void* const Buffer, uint16_t Length)
-							{
-								uint8_t* DataStream     = ((uint8_t*)Buffer);
+				  // Do not send more data than the host requests
+					if (Length > USB_ControlRequest.wLength)
+				    Length = USB_ControlRequest.wLength;
 
-							  // Do not send more data than the host requests
-								if (Length > USB_ControlRequest.wLength)
-							    Length = USB_ControlRequest.wLength;
+				  do
+				  {
+				    // Only send one Bank max
+				    uint8_t BytesToSend = FIXED_CONTROL_ENDPOINT_SIZE;
+				    if(Length < BytesToSend){
+				      BytesToSend = Length;
+				    }
 
-							  do
-							  {
-							    // Only send one Bank max
-							    uint8_t BytesToSend = FIXED_CONTROL_ENDPOINT_SIZE;
-							    if(Length < BytesToSend){
-							      BytesToSend = Length;
-							    }
+				    // Wait for endpoint to get ready
+						while(!Endpoint_IsINReady());
 
-							    // Wait for endpoint to get ready
-						    //if(Endpoint_IsOUTReceived()){
-							    //  return;
-							    //}
+						// TODO teensy aborts with this check
+			    	//if(Endpoint_IsOUTReceived()){
+				    //  return;
+				    //}
 
-							    // Send Bank
-							    while (BytesToSend--)
-							    {
-							      Endpoint_Write_8(*DataStream);
-							      DataStream++;
-							      Length--;
-							    }
-							    Endpoint_ClearIN();
-							  }
-							  while (Length);
-							}
-
-
+				    // Send Bank
+				    while (BytesToSend--)
+				    {
+				      Endpoint_Write_8(*DataStream);
+				      DataStream++;
+				      Length--;
+				    }
+				    Endpoint_ClearIN();
+				  }
+				  while (Length);
+				}
 
 	/* Disable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)

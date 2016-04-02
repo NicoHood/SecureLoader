@@ -113,7 +113,7 @@
 							uint8_t EndpointIndex = ((uint8_t)USB_ControlRequest.wIndex & ENDPOINT_EPNUM_MASK);
 
 							// We ignore errors for non existing endpoints
-							//TODO
+							//TODO actually only 1 endpoint is possible here
 							//  || EndpointIndex > ENDPOINT_TOTAL_ENDPOINTS
 							if (EndpointIndex == ENDPOINT_CONTROLEP)
 								return;
@@ -133,6 +133,8 @@
 									Endpoint_ResetDataToggle();
 								}
 							}
+
+							Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 						}
 
 						break;
@@ -227,6 +229,7 @@
 			static inline void USB_Device_SetConfiguration(void);
 			static inline void USB_Device_SetConfiguration(void)
 			{
+
 				USB_Device_ConfigurationNumber = (uint8_t)USB_ControlRequest.wValue;
 
 				if (USB_Device_ConfigurationNumber > FIXED_NUM_CONFIGURATIONS)

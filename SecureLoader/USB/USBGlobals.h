@@ -56,10 +56,7 @@
        *
        *  \ingroup Group_Device
        */
-       // TODO improve
       extern uint8_t USB_Device_ConfigurationNumber;
-      //register uint8_t USB_Device_ConfigurationNumber asm("r2");
-      //#define USB_Device_ConfigurationNumber GPIOR0
 
       /** Structure containing the last received Control request when in Device mode (for use in user-applications
        *  inside of the \ref EVENT_USB_Device_ControlRequest() event, or for filling up with a control request to
