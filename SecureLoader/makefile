@@ -18,7 +18,7 @@ F_CPU        = 16000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = s
 TARGET       = BootloaderHID
-SRC          = $(TARGET).c Descriptors.c BootloaderAPI.c $(LIBOBJS) $(LUFA_SRC_USB)
+SRC          = $(TARGET).c BootloaderAPI.c $(LIBOBJS) $(LUFA_SRC_USB)
 DMBS_PATH    = ../dmbs/DMBS
 CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET)
 LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAGS)

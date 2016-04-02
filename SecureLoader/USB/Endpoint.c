@@ -37,30 +37,35 @@ void Endpoint_Write_Control_Stream_LE (const void* const Buffer,
                             uint16_t Length)
 {
 	uint8_t* DataStream     = ((uint8_t*)Buffer);
-	bool     LastPacketFull = false;
 
-  // TODO required? YES but why? -> descriptor
+  // Do not send more data than the host requests
 	if (Length > USB_ControlRequest.wLength)
-	  Length = USB_ControlRequest.wLength;
-	else if (!(Length)) //TODO remove and change loop below
-	  Endpoint_ClearIN();
+    Length = USB_ControlRequest.wLength;
 
-	while (Length || LastPacketFull)
-	{
-		if (Endpoint_IsINReady())
-		{
-			uint16_t BytesInEndpoint = Endpoint_BytesInEndpoint(); //TODO only use 8 bit?
+  do
+  {
+    // Only send one Bank max
+    uint8_t BytesToSend = FIXED_CONTROL_ENDPOINT_SIZE;
+    if(Length < BytesToSend){
+      BytesToSend = Length;
+    }
 
-			while (Length && (BytesInEndpoint < FIXED_CONTROL_ENDPOINT_SIZE))
-			{
-				Endpoint_Write_8(*DataStream);
-				DataStream++;
-				Length--;
-				BytesInEndpoint++;
-			}
+    // Wait for endpoint to get ready
+    while (!Endpoint_IsINReady());
 
-			LastPacketFull = (BytesInEndpoint == FIXED_CONTROL_ENDPOINT_SIZE);
-			Endpoint_ClearIN();
-		}
-	}
+    // TODO teensy aborts if out received?
+    //if(Endpoint_IsOUTReceived()){
+    //  return;
+    //}
+
+    // Send Bank
+    while (BytesToSend--)
+    {
+      Endpoint_Write_8(*DataStream);
+      DataStream++;
+      Length--;
+    }
+    Endpoint_ClearIN();
+  }
+  while (Length);
 }

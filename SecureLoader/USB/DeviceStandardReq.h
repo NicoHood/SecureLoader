@@ -76,17 +76,6 @@
 			 extern USB_Request_Header_t USB_ControlRequest;
 
 	/* Private Interface - For use in library only: */
-	#if !defined(__DOXYGEN__)
-		#if defined(USE_RAM_DESCRIPTORS) && defined(USE_EEPROM_DESCRIPTORS)
-			#error USE_RAM_DESCRIPTORS and USE_EEPROM_DESCRIPTORS are mutually exclusive.
-		#elif defined(USE_RAM_DESCRIPTORS) && defined(USE_FLASH_DESCRIPTORS)
-			#error USE_RAM_DESCRIPTORS and USE_FLASH_DESCRIPTORS are mutually exclusive.
-		#elif defined(USE_FLASH_DESCRIPTORS) && defined(USE_EEPROM_DESCRIPTORS)
-			#error USE_FLASH_DESCRIPTORS and USE_EEPROM_DESCRIPTORS are mutually exclusive.
-		#elif defined(USE_FLASH_DESCRIPTORS) && defined(USE_EEPROM_DESCRIPTORS) && defined(USE_RAM_DESCRIPTORS)
-			#error Only one of the USE_*_DESCRIPTORS modes should be selected.
-		#endif
-
 		/* Function Prototypes: */
 			void USB_Device_ProcessControlRequest(void);
 
@@ -102,7 +91,6 @@
 					static void USB_Device_GetInternalSerialDescriptor(void);
 				#endif
 			#endif
-	#endif
 
 	/* Disable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)

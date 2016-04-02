@@ -44,7 +44,6 @@
 		#include <avr/interrupt.h>
 		#include <stdbool.h>
 
-		#include "Descriptors.h"
 		#include "AES/aes256_ctr.h"
 		#include "SERIAL/serial.h"
 		#include "BootloaderAPI.h"

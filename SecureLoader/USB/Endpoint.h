@@ -34,9 +34,7 @@
 	/* Includes: */
 		#include "Common/Common.h"
 		#include "Device.h" // DEVICE_STATE
-
-		#include "StdRequestType.h"
-		#include "DeviceStandardReq.h"
+		#include "DeviceStandardReq.h" // USB_ControlRequest
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)
@@ -59,16 +57,6 @@
 			 *  defined for convenience to give more readable code when used with the endpoint macros.
 			 */
 			#define ENDPOINT_CONTROLEP                      0
-
-			/* Enable C linkage for C++ Compilers: */
-				#if defined(__cplusplus)
-					extern "C" {
-				#endif
-
-			/* Preprocessor Checks: */
-				#if !defined(__INCLUDE_FROM_USB_DRIVER)
-					#error Do not include this file directly. Include LUFA/Drivers/USB/USB.h instead.
-				#endif
 
 			/* Private Interface - For use in library only: */
 				/* Inline Functions: */
@@ -797,26 +785,11 @@
 					}
 
 				/* External Variables: */
-					/** Global indicating the maximum packet size of the default control endpoint located at address
-					 *  0 in the device. This value is set to the value indicated in the device descriptor in the user
-					 *  project once the USB interface is initialized into device mode.
-					 *
-					 *  If space is an issue, it is possible to fix this to a static value by defining the control
-					 *  endpoint size in the \c FIXED_CONTROL_ENDPOINT_SIZE token passed to the compiler in the makefile
-					 *  via the -D switch. When a fixed control endpoint size is used, the size is no longer dynamically
-					 *  read from the descriptors at runtime and instead fixed to the given value. When used, it is
-					 *  important that the descriptor control endpoint size value matches the size given as the
-					 *  \c FIXED_CONTROL_ENDPOINT_SIZE token - it is recommended that the \c FIXED_CONTROL_ENDPOINT_SIZE token
-					 *  be used in the device descriptors to ensure this.
-					 *
-					 *  \attention This variable should be treated as read-only in the user application, and never manually
-					 *             changed in value.
-					 */
-					#if !defined(FIXED_CONTROL_ENDPOINT_SIZE)
-						#define ENDPOINT_CONTROLEP_DEFAULT_SIZE     8
-						#define FIXED_CONTROL_ENDPOINT_SIZE ENDPOINT_CONTROLEP_DEFAULT_SIZE
-						#warning FIXED_CONTROL_ENDPOINT_SIZE not set. Using default value 8.
-					#endif
+				/** Global indicating the maximum packet size of the default control endpoint located at address
+				 *  0 in the device. This value is set to the value indicated in the device descriptor in the user
+				 *  project once the USB interface is initialized into device mode.
+				 */
+				#define FIXED_CONTROL_ENDPOINT_SIZE      64
 
 					static inline void Endpoint_ClearStatusStageDeviceToHost(void);
 					static inline void Endpoint_ClearStatusStageDeviceToHost(void)

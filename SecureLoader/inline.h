@@ -6,13 +6,6 @@
  */
 void EVENT_USB_Device_ControlRequest(void)
 {
-	// Ignore any requests that aren't directed to the HID interface
-	// HostToDevice or DeviceToHost is unimportant as we use Set/GetReport
-	if ((USB_ControlRequest.bmRequestType & (CONTROL_REQTYPE_TYPE | CONTROL_REQTYPE_RECIPIENT)) !=
-	    (REQTYPE_CLASS | REQREC_INTERFACE))	{
-		return;
-	}
-
 	// Get input data length
 	// TODO also important for GET_Report?
 	uint16_t length = USB_ControlRequest.wLength;
@@ -355,20 +348,39 @@ static void USB_Device_SetAddress(void)
 
 static void USB_Device_GetDescriptor(void)
 {
-	const void* DescriptorPointer;
-	uint16_t    DescriptorSize;
+	const void* DescriptorAddress = NULL;
+	uint16_t    DescriptorSize = NO_DESCRIPTOR;
 
-	if ((DescriptorSize = CALLBACK_USB_GetDescriptor(USB_ControlRequest.wValue,
-																									 USB_ControlRequest.wIndex,
-																									 &DescriptorPointer)) == NO_DESCRIPTOR)
+  const uint8_t DescriptorType   = (USB_ControlRequest.wValue >> 8);
+
+	/* If/Else chain compiles slightly smaller than a switch case */
+	if (DescriptorType == DTYPE_Device)
 	{
-		return;
+		DescriptorAddress = &DeviceDescriptor;
+		DescriptorSize    = sizeof(USB_Descriptor_Device_t);
+	}
+	else if (DescriptorType == DTYPE_Configuration)
+	{
+		DescriptorAddress = &ConfigurationDescriptor;
+		DescriptorSize    = sizeof(USB_Descriptor_Configuration_t);
+	}
+	else if (DescriptorType == HID_DTYPE_HID)
+	{
+		DescriptorAddress = &ConfigurationDescriptor.HID_VendorHID;
+		DescriptorSize    = sizeof(USB_HID_Descriptor_HID_t);
+	}
+	// TODO vendor and product strings? TODO internal string
+  // TODO why defaulting, what about returning?
+	else
+	{
+		DescriptorAddress = &HIDReport;
+		DescriptorSize    = sizeof(HIDReport);
 	}
 
 	Endpoint_ClearSETUP();
 
 	// TODO improve write control stream/inline
-	Endpoint_Write_Control_Stream_LE(DescriptorPointer, DescriptorSize);
+	Endpoint_Write_Control_Stream_LE(DescriptorAddress, DescriptorSize);
 
 	Endpoint_ClearStatusStageDeviceToHost();
 }
@@ -406,23 +418,26 @@ void USB_Device_ProcessControlRequest(void)
 	for (uint8_t RequestHeaderByte = 0; RequestHeaderByte < sizeof(USB_Request_Header_t); RequestHeaderByte++)
 	  *(RequestHeader++) = Endpoint_Read_8();
 
-	EVENT_USB_Device_ControlRequest();
+  uint8_t bmRequestType = USB_ControlRequest.bmRequestType;
 
-	if (Endpoint_IsSETUPReceived())
+  // Ignore any requests that aren't directed to the HID interface
+	// HostToDevice or DeviceToHost is unimportant as we use Set/GetReport
+	if ((bmRequestType & (CONTROL_REQTYPE_TYPE | CONTROL_REQTYPE_RECIPIENT)) ==
+	    (REQTYPE_CLASS | REQREC_INTERFACE))	{
+		EVENT_USB_Device_ControlRequest();
+	}
+  else
 	{
-		uint8_t bmRequestType = USB_ControlRequest.bmRequestType;
-
 		switch (USB_ControlRequest.bRequest)
 		{
 			case REQ_GetStatus:
 				if ((bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE)) ||
 					(bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_ENDPOINT)))
 				{
-					return; // TODO doesnt seem to be essential
 					USB_Device_GetStatus(); // optional, fully optimized
 				}
-
 				break;
+
 			case REQ_ClearFeature:
 			case REQ_SetFeature:
 				if ((bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_STANDARD | REQREC_DEVICE)) ||
@@ -430,36 +445,36 @@ void USB_Device_ProcessControlRequest(void)
 				{
 					USB_Device_ClearSetFeature(); //used, fully optimized
 				}
-
 				break;
+
 			case REQ_SetAddress:
 				if (bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_STANDARD | REQREC_DEVICE))
 				{
 				  USB_Device_SetAddress(); // essential, fully optimized, better than teensy
 				}
 				break;
+
 			case REQ_GetDescriptor:
 				if ((bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE)) ||
 					(bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_INTERFACE)))
 				{
 					USB_Device_GetDescriptor(); //used, different, sending can be improved a lot TODO
 				}
-
 				break;
+
 			case REQ_GetConfiguration:
 				if (bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE))
 				{
 					return; // TODO doesnt seem to be essential
 				  USB_Device_GetConfiguration(); // optional, fully optomized
 				}
-
 				break;
+
 			case REQ_SetConfiguration:
 				if (bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_STANDARD | REQREC_DEVICE))
 				{
 				  USB_Device_SetConfiguration(); // essential, fully optomized
 				}
-
 				break;
 
 			default:

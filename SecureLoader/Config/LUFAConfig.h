@@ -43,12 +43,7 @@
 #define _LUFA_CONFIG_H_
 
 		/* USB Device Mode Driver Related Tokens: */
-		#define USE_RAM_DESCRIPTORS
-//		#define USE_FLASH_DESCRIPTORS
-//		#define USE_EEPROM_DESCRIPTORS
-		#define NO_INTERNAL_SERIAL
-		#define FIXED_CONTROL_ENDPOINT_SIZE      8
-		#define DEVICE_STATE_AS_GPIOR            0
+
 		#define FIXED_NUM_CONFIGURATIONS         1
 //		#define CONTROL_ONLY_DEVICE
 //		#define INTERRUPT_CONTROL_ENDPOINT

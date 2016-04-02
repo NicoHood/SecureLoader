@@ -40,5 +40,6 @@
 		#include "DeviceStandardReq.h"
 		#include "Device.h"
 		#include "USBController.h"
+		#include "Descriptors.h"
 
 #endif

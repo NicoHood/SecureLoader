@@ -60,70 +60,38 @@
 			 *                                     class-specific standards.
 			 *  \param[out] DescriptorAddress      Pointer to the descriptor in memory. This should be set by the routine to
 			 *                                     the address of the descriptor.
-			 *  \param[out] DescriptorMemorySpace  A value from the \ref USB_DescriptorMemorySpaces_t enum to indicate the memory
-			 *                                     space in which the descriptor is stored. This parameter does not exist when one
-			 *                                     of the \c USE_*_DESCRIPTORS compile time options is used, or on architectures which
-			 *                                     use a unified address space.
-			 *
-			 *  \note By default, the library expects all descriptors to be located in flash memory via the \c PROGMEM attribute.
-			 *        If descriptors should be located in RAM or EEPROM instead (to speed up access in the case of RAM, or to
-			 *        allow the descriptors to be changed dynamically at runtime) either the \c USE_RAM_DESCRIPTORS or the
-			 *        \c USE_EEPROM_DESCRIPTORS tokens may be defined in the project makefile and passed to the compiler by the -D
-			 *        switch.
 			 *
 			 *  \return Size in bytes of the descriptor if it exists, zero or \ref NO_DESCRIPTOR otherwise.
 			 */
 			uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 			                                    const uint16_t wIndex,
 			                                    const void** const DescriptorAddress
-			#if (defined(ARCH_HAS_MULTI_ADDRESS_SPACE) || defined(__DOXYGEN__)) && \
-			    !(defined(USE_FLASH_DESCRIPTORS) || defined(USE_EEPROM_DESCRIPTORS) || defined(USE_RAM_DESCRIPTORS))
-			                                    , uint8_t* const DescriptorMemorySpace
-			#endif
 			                                    ) ATTR_WARN_UNUSED_RESULT ATTR_NON_NULL_PTR_ARG(3);
 
-			/* Preprocessor Checks: */
-				#if !defined(__INCLUDE_FROM_USB_DRIVER)
-					#error Do not include this file directly. Include LUFA/Drivers/USB/USB.h instead.
-				#endif
+		/* Inline Functions: */
+			static inline void USB_Device_SetFullSpeed(void) ATTR_ALWAYS_INLINE;
+			static inline void USB_Device_SetFullSpeed(void)
+			{
+				UDCON &= ~(1 << LSM);
+			}
 
-				#if (defined(USE_RAM_DESCRIPTORS) && defined(USE_EEPROM_DESCRIPTORS))
-					#error USE_RAM_DESCRIPTORS and USE_EEPROM_DESCRIPTORS are mutually exclusive.
-				#endif
+			static inline void USB_Device_SetDeviceAddress(const uint8_t Address) ATTR_ALWAYS_INLINE;
+			static inline void USB_Device_SetDeviceAddress(const uint8_t Address)
+			{
+				UDADDR = (UDADDR & (1 << ADDEN)) | (Address & 0x7F);
+			}
 
-				#if (defined(USE_FLASH_DESCRIPTORS) && defined(USE_EEPROM_DESCRIPTORS))
-					#error USE_FLASH_DESCRIPTORS and USE_EEPROM_DESCRIPTORS are mutually exclusive.
-				#endif
+			static inline void USB_Device_EnableDeviceAddress(void) ATTR_ALWAYS_INLINE;
+			static inline void USB_Device_EnableDeviceAddress(void)
+			{
+				UDADDR |= (1 << ADDEN);
+			}
 
-				#if (defined(USE_FLASH_DESCRIPTORS) && defined(USE_RAM_DESCRIPTORS))
-					#error USE_FLASH_DESCRIPTORS and USE_RAM_DESCRIPTORS are mutually exclusive.
-				#endif
-
-			/* Public Interface - May be used in end-application: */
-				/* Inline Functions: */
-					static inline void USB_Device_SetFullSpeed(void) ATTR_ALWAYS_INLINE;
-					static inline void USB_Device_SetFullSpeed(void)
-					{
-						UDCON &= ~(1 << LSM);
-					}
-
-					static inline void USB_Device_SetDeviceAddress(const uint8_t Address) ATTR_ALWAYS_INLINE;
-					static inline void USB_Device_SetDeviceAddress(const uint8_t Address)
-					{
-						UDADDR = (UDADDR & (1 << ADDEN)) | (Address & 0x7F);
-					}
-
-					static inline void USB_Device_EnableDeviceAddress(void) ATTR_ALWAYS_INLINE;
-					static inline void USB_Device_EnableDeviceAddress(void)
-					{
-						UDADDR |= (1 << ADDEN);
-					}
-
-					static inline bool USB_Device_IsAddressSet(void) ATTR_ALWAYS_INLINE ATTR_WARN_UNUSED_RESULT;
-					static inline bool USB_Device_IsAddressSet(void)
-					{
-						return (UDADDR & (1 << ADDEN));
-					}
+			static inline bool USB_Device_IsAddressSet(void) ATTR_ALWAYS_INLINE ATTR_WARN_UNUSED_RESULT;
+			static inline bool USB_Device_IsAddressSet(void)
+			{
+				return (UDADDR & (1 << ADDEN));
+			}
 
 	/* Disable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)
