@@ -28,7 +28,6 @@ It is **not final**. Contributions appreciated.
 * Feature updates
 * Uploading a self recompiled Firmware
 * Developing new Firmware features
-* Verify Bootloader and Firmwares authenticity and integrity
 
 ### 1.2 Bootloader Properties
 * Protects Firmwares confidentiality, authenticity, integrity
@@ -36,8 +35,8 @@ It is **not final**. Contributions appreciated.
 * No special drivers required
 * Coded for AVR USB Microcontrollers
 * Optimized for [ATmega32u4](http://www.atmel.com/devices/atmega32u4.aspx)
-* Fits into 4kb Bootloader section TODO
-* Based on [LUFA](www.lufa-lib.org)
+* Fits into 4kb Bootloader section
+* Based on a very reduced version of [LUFA](www.lufa-lib.org)
 * [Reusable](#313-bootloader-jump-table-bjt) [AES implementation](#316-crypto-algorithms)
 * [Open Source](#210-open-source-guarantee)
 
@@ -45,9 +44,9 @@ It is **not final**. Contributions appreciated.
 
 ##### Required Conditions for Device Security:
 * The AVR is programmed with the correct fuses.
-* The initial password is kept secure by the vendor until the user requests it.
-* The security also relies on the Firmware (Firmware authenticity!).
-* The Bootloader Key is changed before every Firmware upgrade.
+* The initial [Bootloader Key](TODO) is kept secure [by the vendor until the user requests it.](TODO)
+* The security also relies on the Firmware ([Firmware Authenticity!](TODO)).
+* The Bootloader Key is [changed before every Firmware upgrade](TODO).
 
 ##### Worst Case Scenario (might differ to the Real World):
 * The Firmware handles secure information that a Firmware backdoor could leak.
@@ -69,23 +68,26 @@ It is **not final**. Contributions appreciated.
 9. [Firmware Brick Protection](#29-firmware-brick-protection)
 10. [Open Source Guarantee](#210-open-source-guarantee)
 
-### 2.1 Bootloader/Device Authenticity Protection
-Each device comes with a unique [Bootloader Key](#32-bootloader-key-bk) that was
+
+### 2.1 Unauthorized Firmware Upgrade/Downgrade Protection
+Only signed Firmwares from a trusted source can be flashed with the Bootloader.
+
+Each device comes with a unique shared secret
+[Bootloader Key](#32-bootloader-key-bk) that was
 [set by the vendor](#323-initial-bootloader-key) or
-[the user](#324-change-the-bootloader-key). **The owner of the
-[Bootloader Key](#32-bootloader-key-bk) is responsible for keeping it secret**.
+[the user](#324-change-the-bootloader-key).
 
-The [Bootloader and device authenticity](#325-authenticate-the-bootloader-to-the-pc)
-is ensured through the [Bootloader Key](#32-bootloader-key-bk).
-Techniques how the [Bootloader Key](#32-bootloader-key-bk) is kept secure are
-described below.
+The owner of the [Bootloader Key](#32-bootloader-key-bk) is responsible for
+keeping it secret. Techniques how the [Bootloader Key](#32-bootloader-key-bk) is
+kept secure are described below.
 
-You also want to check Bootloader authenticity if your
-[FID Hash](#343-firmware-id-hash-fid-hash) changed. If the Bootloader gets
-overwritten, the [FID Hash](#343-firmware-id-hash-fid-hash) will change. Even
-though the Bootloader can be authenticated manually the **Firmware should also
-authenticate itself at every boot though the
-[FID Hash](#343-firmware-id-hash-fid-hash)**.
+Every Firmware needs to be signed with a the Bootloader Key. You can even flash
+the device from a not trusted PC, as it will only allow signed Firmware to be
+uploaded. Firmware downgrades (replay attacks) are prevented via Bootloader Key
+changes.
+
+The device authenticity **is not** ensured through the Bootloader, it has to be
+done by the firmware. Techniques how to ensure device authenticity are described below.
 
 ### 2.2 ISP Protection
 An ISP could be used to read the Bootloader and application flash content. This
@@ -95,8 +97,8 @@ access to the PCB which can be visually noticed on some devices.
 Moreover on AVR the [Lock Bits](#363-lock-bits-explanation) prevent an
 [attacker](#13-attack-scenario) from reading the flash content. Overwriting the
 Bootloader via ISP will also overwrite the [BK](#32-bootloader-key-bk) and the
-[FID Hash](#343-firmware-id-hash-fid-hash). This way the
-[Bootloaders authenticity](#21-bootloaderdevice-authenticity-protection) can be
+[UID](TODO). This way the
+[Firmware Authenticity](TODO) can be
 ensured.
 
 ### 2.3 Brute Force Protection
@@ -104,88 +106,65 @@ The [BK](#32-bootloader-key-bk) has an
 [AES-256 symmetric key](#316-crypto-algorithms). To brute force a signed
 [Firmware upgrade](#26-unauthorized-firmware-upgradedowngrade-protection) you'd
 (currently) need too much time to crack it. Also there is a timeout after each
-failed upload and the
-[Firmware Violation Counter](#334-firmware-violation-counter-fwvc) will keep
-track of those. After 3 failed attempts the Bootloader has to be
-([manually](Compromised PC protection))
-restarted.
+failed upload.
 
 ### 2.4 Compromised PC protection
 A compromised PC (via virus) could not hack the Bootloader in any way. The
 [firmware upgrade](#26-unauthorized-firmware-upgradedowngrade-protection) is
-protected (unless the PC does not get the BK). Even then a new
-[FID Hash](#343-firmware-id-hash-fid-hash) will let the user notice a
-[Bootloaders authenticity](#21-bootloaderdevice-authenticity-protection)
-violation. Also the Bootloader [Recovery Mode](#315-recovery-mode) can only be
-entered via a physical button press.
+protected (unless the PC does not get the BK).
 
-### 2.5 Hacking the Bootloader from the Firmware Protection
-If someone is able to
+### Firmware Vulnerability Risk
+If the Firmware has a security vulnerability that exposes the BK there is no
+chance to ensure device security. Make sure you are always using the latest
+firmware.
+
+[If someone is able to
 [upload malicious Firmware](#26-unauthorized-firmware-upgradedowngrade-protection)
-to the device he needs access to the BK. If he has got the BK, he could simply
-fake and burn a new (fake) Bootloader instead. Therefore it is mostly useless to
-hack the Bootloader from the Firmware except if opening the device to
-[use ISP](#22-isp-protection) can be visually noticed.
-
-This hack can be prevented with storing the secrets into the
-[SBS](#312-secure-bootloader-section-sbs) and setting the correct
-[Lock Bits](#363-lock-bits-explanation).
-
-Therefore this attack scenario concentrates more on Bootloader hacking via
-Firmware vulnerabilities. Even if a Firmware vulnerability was found you can
-hardly hack the Bootloader. AVR use
-[Harvard architecture](https://en.wikipedia.org/wiki/Harvard_architecture), not
-[Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture).
-Also you can do a Firmware upgrade to get rid of the security vulnerability.
-
-### 2.6 Unauthorized Firmware Upgrade/Downgrade Protection
-Only signed Firmwares can be flashed with the Bootloader.
-You can even flash the device from a not trusted PC.
-
-Every Firmware needs to be signed with the Bootloader Key.
-The BK is kept secure by the vendor or by the user.
-
-Flashing a new Firmware will also change the Firmware ID Hash (TODO link).
-The user is able notice a Firmware change, even with an ISP.
-
-Firmware downgrades (replay attacks) are prevented via Bootloader key changes.
-
-A compromised PC cannot initiate a Firmware upgrade.
-The Bootloader can only be started via a physical key press.
-
-### 2.7 Firmware Authenticity Protection
-You will notice a Firmware change because the
-[FID Hash](#343-firmware-id-hash-fid-hash) has changed. This check has to be
-done by the user at every boot and needs to be
-[coded in the Firmware](#34-firmware-authentication). You will also notice this
-if a new Bootloader was burned. To check the Firmwares authenticity you can
-always read the [checksum](#332-firmware-checksum-fw-checksum) from the
-Bootloader after you checked its
-[authenticity](#21-bootloaderdevice-authenticity-protection). This way you can
-ensure that the Firmware was not manipulated.
-
-**Conclusion:
-The security also relies on the Firmware, not only the Bootloader!**
-
-### 2.8 Flash Corruption Protection
-* [Brown-out detection (Fuse)](#36-fuse-settings)
-* [Secure Bootloader section (SBS)](#312-secure-bootloader-section-sbs)
-* [Power on self test (POST)](#314-power-on-self-test-post)
+to the device he needs access to the BK or the upgrade mechanism is insecure.
+In this case the whole concept is useless. This risk can be reduced with
+[Open Source](TODO)
+If you upload a malicious Firmware that you signed with your own key, its an
+user fault.
 
 ### 2.9 Firmware Brick Protection
-If you upload a bricked Firmware it is always possible to enter the Bootloader
-[Recovery Mode](#315-recovery-mode) again. The Bootloader does **not rely on any
-part of the Firmware**. Then you can upload another Firmware instead and
+If you upload a bricked Firmware it is always possible to enter the
+[Bootloader Mode](#315-recovery-mode) again. The Bootloader does **not rely on
+any part of the Firmware**. Then you can upload another Firmware instead and
 continue testing. You should not lose your BK to be able to upload another
 Firmware again. Also see
 [Flash Corruption Protection](#28-flash-corruption-protection)
+
+### 2.8 Flash Corruption Protection
+* [Brown-out detection (Fuse)](#36-fuse-settings)
+
+### 2.2 Firmware Authenticity Protection
+It is **highly suggested** that the Firmware also provides a way to authenticate
+itself to the user. This can be done with a unique ID (UID) that is stored
+inside EEPROM. First the user has to authenticate itself to the Firmware which
+then will display the secret UID. The user has to verify the UID message. If the
+UID changes the device got wiped with an ISP and the user will notice.
+
+A good practice is to create an UID from a special user nonce and another (per
+user) random nonce. This way you can create a special UID for each user and
+change it if it was compromised (seen by someone else).
+
+The UID will not protect against Bootloader Key/Firmware attacks. TODO 2 links
+The UID also does not prevent the user from ignoring its importance though.
+
+The process could look like this:
+1. Merge user nonce with the random user nonce
+2. Display a warning that the UID has to be kept secret
+3. Display UID
+4. The user has to accept it.
+
+**Conclusion:
+The security also relies on the Firmware, not only the Bootloader!**
 
 ### 2.10 Open Source Guarantee
 The Bootloader software is [open source](#7-license-and-copyright). This means
 it can be reviewed and improved by many people. You always able to burn the
 Bootloader on your own at any time. Keep in mind that the
-[FID Hash](#343-firmware-id-hash-fid-hash) will change and all Bootloader and
-Firmware data will be lost.
+[UID](TODO) will change and all Bootloader and Firmware data will be lost.
 
 Preventing
 [unauthorized Firmware upgrades](#26-unauthorized-firmware-upgradedowngrade-protection)
@@ -226,84 +205,41 @@ accepted, but it is not encrypted (open source).
 
 #### 3.1.1 Boot Process
 0. Device startup, always run the Bootloader (BOOTRST=0)
-1. [POST](#314-power-on-self-test-post):
-   Check the Bootloader and Firmware integrity (checksum) at startup
-2. Special case if [no Bootloader Key was set](#322-no-bootloader-key-set)
-   (after ISP the Bootloader)
-  1. Force to set a Bootloader Key via USB HID
-  2. Clear RAM and reboot via watchdog reset
-3. [Recovery mode](#315-recovery-mode) entered
-   (press special hardware keys at startup)
-  * Verify the [Firmwares checksum](#332-firmware-checksum-fw-checksum)
-    if the PC requests it
+1. Check if the Bootloader should be loaded (Hardware Button)
   * Do a [Firmware upgrade](#Firmware-upgrade)
   * [Change the Bootloader Key](#324-change-the-bootloader-key)
     with a signed and encrypted new password
-  * [Authenticate the Bootloader to the PC (via Bootloader Key)](#authenticate-the-bootloader-to-the-pc) TODO???
-  * Clear RAM and reboot via watchdog reset
-4. Recovery mode not entered (just plug in the device)
-  1. Start the Firmware
-  2. The user needs to [authenticate the Firmware](#34-firmware-authentication)
+  * Verify the Firmware
+  * Start the Firmware
 
-TODO shorter?
+#### 3.1.5 Enter Bootloader Mode
+After device startup the Bootloader normally executes the Firmware. To enter the
+Bootloader Mode you need to manually press a physical button. This ensures that
+you cannot enter the recovery mode automatic from the PC side.
 
-#### 3.1.2 Secure Bootloader Section (SBS)
-Secrets are stored inside the protected Bootloader flash section:
-* Bootloader Checksum
-* Bootloader Key
-* Firmware Checksum
-* Firmware Upgrade Counter (32bit)
-* Firmware Identifier
-* Firmware Violation Counter (32bit)
+Firmware upgrades are done less often so the user have to explicitly call the
+Bootloader Mode. A note how to start the recovery mode should be placed inside
+the Firmware manual.
 
-They are stored in **special flash page** to avoid
-[flash corruption](#28-flash-corruption-protection) of the Bootloader code. The
-Bootloaders flash is protected by fuses and though it is safe from
-[being read via ISP](#22-isp-protection). The
-[Lock Bits](#363-lock-bits-explanation) also prevent the
-[Firmware from hacking the Bootloader code](#25-hacking-the-bootloader-from-the-firmware-protection).
+TODO also enter the bootloader mode via watchtog reset as brute force will be disabled with a timeout.
 
-This secure Bootloader section is also excluded from the Bootloaders checksum.
-Typically the last Bootloader flash page is used to store the Bootloader
-settings. The **Firmware has
-[no direct (read/write) access](#363-lock-bits-explanation)** to the data except
-via the [BJT](#313-bootloader-jump-table-bjt).
+### Additional Features
 
 #### 3.1.3 Bootloader Jump Table (BJT)
-The Bootloader Jump Table is used to call functions of the Bootloader from the
+The Bootloader Jump Table is used to reuse functions of the Bootloader from the
 Firmware. This can be used to implement further security functions inside the
-Firmware.
+Firmware and don't waste the flash for a reimplementation of AES.
 
 Available Jump Table functions are:
-* Get [FID](#342-firmware-identifier-fid)
-* Get FWUC
-* Get FWVC
-* AES
+* AES (dec or enc + init)
+* Write flash page
 
 TODO
 
-#### 3.1.4 Power on Self Test (POST)
-The Bootloader checks the Bootloader and Firmware checksum at every boot to
-**prevent flash corruption**. Some parts of the
-[SBS](#312-secure-bootloader-section-sbs) are excluded from this check like the
-booloader checksum and the FWVC. Fuse and Lock bits will also be checked.
-
-TODO we need to use CRC16/32 for this. Is it essential to do this at every boot?
-
-#### 3.1.5 Recovery Mode
-After device startup the Bootloader normally executes the Firmware after a POST.
-To enter the recovery mode you need to manually press a physical button. This
-ensures that you cannot enter the recovery mode automatic from the PC side.
-Firmware upgrades are done less often so the user have to explicitly call the
-recovery mode. A note how to start the recovery mode should be placed inside the
-Firmware (manual).
-
-After entering the recovery mode the user can TODO list
-
 #### 3.1.6 Crypto Algorithms
-AES-256 for encrypting
+AES-256 for enc/decrypting
 [AES-256 CBC-MAC for signing](https://en.wikipedia.org/wiki/CBC-MAC)
-[CRC](http://www.nongnu.org/avr-libc/user-manual/group__util__crc.html) for POST TODO do we need this?
+CBC
 
 TODO links
 
@@ -312,26 +248,18 @@ TODO links
 #### 3.2.1 Overview
 Each device [comes with](TODO) a **secret unique symmetric AES-256 Bootloader Key**.
 
-The BK can be used to **verify the devices authenticity** at any time.
-The Bootloader Key is also used to **sign new Firmware upgrades**. TODO link.
+The Bootloader Key is used to **sign new Firmware upgrades**. TODO link.
 
 The **initial BK was set by the vendor** who is also responsible for keeping the
-BK secret. The BK can be **changed at any time** and is stored inside the [SBS](#312-secure-bootloader-section-sbs).
+BK secret. The BK can be **changed at any time**.
 
 The BK needs to be kept **highly secure** and should be changed after exchanging
 it over an untrusted connection (Internet!).
 
+It is stored inside EEPROM and the Firmware has full access to it and can also
+change it. Since only signed Firmware can be uploaded, the Firmware is trusted.
+
 TODO links
-
-#### 3.2.2 No Bootloader Key set
-Only after burning the Bootloader via ISP no Bootloader Key was set.
-If no bootkey was set at startup you need to set a Bootloader Key from the
-Bootloader via USB HID. It is intended that it is **not possbile to upload a
-Firmware until a Bootloader Key was set**. It is not possible to remove a
-Bootloader Key afterwards. **Never ship a device without an initial vendor
-Bootloader Key.** TODO link
-
-TODO will boot straight into recovery mode and require a password change first.
 
 #### 3.2.3 Initial Bootloader Key
 A **unique BK is initially set by the vendor** who is also responsible for
@@ -340,20 +268,26 @@ The initial Bootloader Key can be used to provide
 [Firmware upgrades](#33-firmware-upgrade) without
 exposing the BK to the user and enable Firmware upgrades on
 [untrusted Computers](#24-compromised-pc-protection).
-The responsibility of the BK can be transferred to any other user but should be
-changed after exchanging it over an untrusted connection (Internet!).
+The responsibility of the BK can be transferred to any other user but
+[should be changed](TODO) after exchanging it over an untrusted connection (Internet!).
 
 #### 3.2.4 Change the Bootloader Key
-You need to change the Bootloader Key from the Bootloader if
-[no one was set yet](#323-initial-bootloader-key). Also you might want to change
-it for security purposes or add an initial Bootloader Key. This is useful when
+You might want to change the BK for security purposes. This is useful when
 setting an [initial vendor Bootloader Key](#323-initial-bootloader-key) or
 changing it to give the
 [user control over the Bootloader](#210-open-source-guarantee).
 
+The main reason why the BK should be changed is to **forbid replay attacks** of
+old Firmware that might have a security vulnerability.
+
 To change the BK you need to **encrypt the new BK with the old BK**. Enter the
 [Recovery Mode](#315-recovery-mode) and instruct a BK change command with the
 new (encrypted) BK.
+
+
+
+
+
 
 #### 3.2.5 Authenticate the Bootloader to the PC
 
