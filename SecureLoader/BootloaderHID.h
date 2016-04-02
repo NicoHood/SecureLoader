@@ -43,8 +43,9 @@
 		#include <avr/power.h>
 		#include <avr/interrupt.h>
 		#include <stdbool.h>
+		#include <avr/eeprom.h>
 
-		#include "AES/aes256_ctr.h"
+		#include "AES/aes256.h"
 		#include "SERIAL/serial.h"
 		#include "BootloaderAPI.h"
 

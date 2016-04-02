@@ -53,7 +53,7 @@ BootloaderAPI_Trampolines:
 	BootloaderAPI_aes256_encrypt_ecb_Trampoline:
 		jmp aes256_encrypt_ecb
 	BootloaderAPI_aes256_decrypt_ecb_Trampoline:
-		jmp aes256_decrypt_ecb
+		ret
 	BootloaderAPI_UNUSED4:
 		ret
 	BootloaderAPI_UNUSED5:

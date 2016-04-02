@@ -17,15 +17,70 @@
  *
  * CDDL HEADER END
  */
-/*!	\file 	aes256_ctr.c
-*	\brief	AES256CTR encryption
+/*!	\file 	aes256_ctr.h
+*	\brief	AES256CTR encryption Header
 *
 *	Created: 06/03/2014 14:17:00
 *	Author: Miguel A. Borrego
 */
 
+#ifndef __AES_256_CTR_H__
+#define __AES_256_CTR_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+#include <stdbool.h>
 #include "aes.h"
-#include "aes256_ctr.h"
+
+/*! \struct aes256CtrCtx_t
+*   \brief CTX data type
+*/
+typedef struct
+{
+	aes256_ctx_t aesCtx; /*!< aes256 context */
+	uint8_t ctr[16]; /*!< the value of the counter */
+	uint8_t cipherstream[16]; /*!< current ctr encryption output */
+	uint8_t cipherstreamAvailable; /*!< available bytes to xor with new data bytes */
+}aes256CtrCtx_t;
+
+// USEFUL functions
+static inline void aesIncrementCtr(uint8_t *ctr, uint8_t len);
+static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes);
+static inline int8_t aesCtrCompare(uint8_t *ctr1, uint8_t *ctr2, uint8_t len);
+
+// STREAM CTR functions
+static inline void aes256CtrInit(aes256CtrCtx_t *ctx, const uint8_t *key, const uint8_t *iv, uint8_t ivLen);
+static inline void aes256CtrSetIv(aes256CtrCtx_t *ctx, const uint8_t *iv, uint8_t ivLen);
+static inline void aes256CtrEncrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen);
+static inline void aes256CtrDecrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen);
+static inline void aes256CtrClean(aes256CtrCtx_t *ctx);
+
+// DEFINES
+#define AES256_CTR_LENGTH   16
+
+
+// DEFINES
+#define AES256_CBC_LENGTH   16
+
+/*! \struct aes256CbcMacCtx_t
+*   \brief CTX data type
+*/
+typedef struct
+{
+	aes256_ctx_t aesCtx; /*!< aes256 context */
+	uint8_t cbcMac[AES256_CBC_LENGTH]; /*!< the value of the IV/cbcMac */
+}aes256CbcMacCtx_t;
+
+// CBC-MAC functions
+static inline void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key);
+static inline void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen);
+static inline bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac);
+static inline bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen);
+static inline bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac);
+
 
 /*!	\fn 	void aesXorVectors(uint8_t* dest, uint8_t* src, uint8_t nbytes)
 *	\brief	Do xor between dest and src and save it inside dest
@@ -34,7 +89,7 @@
 *   \param  src - source of xor data
 *   \param  nbytes - number of bytes to be xored between dest and src
 */
-void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes)
+static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes)
 {
     while(nbytes--)
     {
@@ -52,7 +107,7 @@ void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes)
 *   \param  iv - pointer to initialization vector, must be 16 or lower.
 *   \param  ivLen - length of initialization vector, must be 16 or lower.
 */
-void aes256CtrInit(aes256CtrCtx_t *ctx, const uint8_t *key, const uint8_t *iv, uint8_t ivLen)
+static inline void aes256CtrInit(aes256CtrCtx_t *ctx, const uint8_t *key, const uint8_t *iv, uint8_t ivLen)
 {
 	// ivLen must be 16 or lower
 	if (ivLen > 16)
@@ -74,7 +129,7 @@ void aes256CtrInit(aes256CtrCtx_t *ctx, const uint8_t *key, const uint8_t *iv, u
 *   \param  iv - pointer to initialization vector, size must be 16 bytes or lower.
 *   \param  ivLen - length of initialization vector, must be 16 or lower.
 */
-void aes256CtrSetIv(aes256CtrCtx_t *ctx, const uint8_t *iv, uint8_t ivLen)
+static inline void aes256CtrSetIv(aes256CtrCtx_t *ctx, const uint8_t *iv, uint8_t ivLen)
 {
 	uint8_t i;
 
@@ -106,7 +161,7 @@ void aes256CtrSetIv(aes256CtrCtx_t *ctx, const uint8_t *iv, uint8_t ivLen)
 *   \param  ctr - pointer to counter+iv, size must be len bytes
 *   \param  len - the size of the ctr buffer to be incremented
 */
-void aesIncrementCtr(uint8_t *ctr, uint8_t len)
+static inline void aesIncrementCtr(uint8_t *ctr, uint8_t len)
 {
     uint8_t i;
 
@@ -131,7 +186,7 @@ void aesIncrementCtr(uint8_t *ctr, uint8_t len)
 *   \param  ctr2 - buffer of second ctr
 *   \param  len - length of the ctr, must be the same for ctr1 and ctr2
 */
-int8_t aesCtrCompare(uint8_t *ctr1, uint8_t *ctr2, uint8_t len)
+static inline int8_t aesCtrCompare(uint8_t *ctr1, uint8_t *ctr2, uint8_t len)
 {
     // -1 ctr1 < ctr2
     // 0 same
@@ -167,7 +222,7 @@ int8_t aesCtrCompare(uint8_t *ctr1, uint8_t *ctr2, uint8_t len)
 *   \param  data - pointer to data, this is also the location to store encrypted data
 *   \param  dataLen - size of data
 */
-void aes256CtrEncrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
+static inline void aes256CtrEncrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
 {
     uint16_t i;
 
@@ -218,7 +273,7 @@ void aes256CtrEncrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
 *   \param  data - pointer to data, this is also the location to store encrypted data
 *   \param  dataLen - size of data
 */
-void aes256CtrDecrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
+static inline void aes256CtrDecrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
 {
 	aes256CtrEncrypt(ctx, data, dataLen);
 }
@@ -229,7 +284,7 @@ void aes256CtrDecrypt(aes256CtrCtx_t *ctx, uint8_t *data, uint16_t dataLen)
 *
 *   \param  ctx - context
 */
-void aes256CtrClean(aes256CtrCtx_t *ctx)
+static inline void aes256CtrClean(aes256CtrCtx_t *ctx)
 {
 	uint8_t *ptr = (uint8_t*)ctx;
 	uint16_t i;
@@ -246,7 +301,7 @@ void aes256CtrClean(aes256CtrCtx_t *ctx)
 *   \param  ctx - context
 *   \param  key - pointer to key, size must be 32 bytes
 */
-void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key)
+static inline void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key)
 {
   // initialize key schedule inside CTX
 	aes256_init(key, &(ctx->aesCtx));
@@ -267,7 +322,7 @@ void aes256CbcMacInit(aes256CbcMacCtx_t *ctx, const uint8_t *key)
 *   \param  data - pointer to data
 *   \param  dataLen - size of data
 */
-void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
+static inline void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
 {
   // Check if dataLen is a multiple of AES256_CBC_LENGTH
   if(dataLen % AES256_CBC_LENGTH != 0) {
@@ -293,7 +348,7 @@ void aes256CbcMacUpdate(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint1
 *   \param  ctx - context
 *   \param  cbcMac - pointer to cbcMac, size must be 16 bytes
 */
-bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac)
+static inline bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac)
 {
   // Check if CBC-MAC matches
   uint8_t i = 0;
@@ -313,7 +368,7 @@ bool aes256CbcMacCompare(aes256CbcMacCtx_t *ctx, const uint8_t *cbcMac)
 *   \param  data - pointer to data
 *   \param  dataLen - size of data
 */
-bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
+static inline bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, const uint16_t dataLen)
 {
   // Check if dataLen is a multiple of AES256_CBC_LENGTH
   if(dataLen % AES256_CBC_LENGTH != 0) {
@@ -350,7 +405,7 @@ bool aes256CbcMacReverseCompare(aes256CbcMacCtx_t *ctx, const uint8_t *data, con
 *   \param  dataLen - size of data
 *   \param  cbcMac - pointer to cbcMac, size must be 16 bytes
 */
-bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac)
+static inline bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, const uint8_t *data, const uint16_t dataLen, const uint8_t *cbcMac)
 {
   // Save key and initialization vector inside context
   // Calculate CBC-MAC
@@ -359,3 +414,9 @@ bool aes256CbcMacInitUpdateCompare(aes256CbcMacCtx_t *ctx, const uint8_t *key, c
   aes256CbcMacUpdate(ctx, data, dataLen);
   return aes256CbcMacCompare(ctx, cbcMac);
 }
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

@@ -84,7 +84,7 @@
 		 *  more details on HID report descriptors.
 		 */
 		// TODO linux does not require this descriptor at all??
-		#include "AES/aes256_ctr.h"
+		#include "AES/aes256.h"
 		static const USB_Descriptor_HIDReport_Datatype_t HIDReport[] =
 		{
 			HID_RI_USAGE_PAGE(16, 0xFFDC), /* Vendor Page 0xDC */
@@ -108,7 +108,7 @@
 		{
 			.Header                 = {.Size = sizeof(USB_Descriptor_Device_t), .Type = DTYPE_Device},
 
-			.USBSpecification       = VERSION_BCD(1,1,0), //TODO USB 2.0?
+			.USBSpecification       = VERSION_BCD(2,0,0),
 			.Class                  = USB_CSCP_NoDeviceClass,
 			.SubClass               = USB_CSCP_NoDeviceSubclass,
 			.Protocol               = USB_CSCP_NoDeviceProtocol,

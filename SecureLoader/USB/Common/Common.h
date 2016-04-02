@@ -72,7 +72,7 @@
 		#include "CompilerSpecific.h"
 		#include "Attributes.h"
 
-		#include "LUFAConfig.h" //TODO path
+		#include "LUFAConfig.h"
 
 	/* Enable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)
@@ -90,10 +90,6 @@
 
 		typedef uint8_t uint_reg_t;
 
-		// TODO remove
-		#define ARCH_HAS_EEPROM_ADDRESS_SPACE
-		#define ARCH_HAS_FLASH_ADDRESS_SPACE
-		#define ARCH_HAS_MULTI_ADDRESS_SPACE
 		#define ARCH_LITTLE_ENDIAN
 
 		#include "Endianness.h"

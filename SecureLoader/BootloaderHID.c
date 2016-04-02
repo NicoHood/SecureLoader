@@ -133,7 +133,6 @@ void Application_Jump_Check(void)
 }
 
 
-
 /** Main program entry point. This routine configures the hardware required by the bootloader, then continuously
  *  runs the bootloader processing routine until instructed to soft-exit.
  */
@@ -239,10 +238,6 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				if (PageAddress == COMMAND_STARTAPPLICATION) {
 					RunBootloader = false;
 				}
-
-				// Acknowledge SetReport request
-				Endpoint_ClearStatusStageHostToDevice();
-				return;
 			}
 			// Process ProgrammFlashPage command
 			else if(length == sizeof(ProgrammFlashPage_t))
@@ -264,32 +259,32 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 					return;
 				}
 
-				// memcpy(ctx.cbcMac, ProgrammFlashPage->cbcMac, sizeof(ctx.cbcMac));
-				//
-				// // Initialize key schedule inside CTX
-				// aes256_init(BootloaderKey, &(ctx.aesCtx));
-				//
-				// // Only write data if CBC-MAC matches
-				// if(aes256CbcMacReverseCompare(&ctx, ProgrammFlashPage->raw,
-				//  	                 						sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac)))
-				// {
-				// 	// TODO timeout, prevent brute force
-				// 	Endpoint_StallTransaction();
-				// 	return;
-				// }
+				memcpy(ctx.cbcMac, ProgrammFlashPage->cbcMac, sizeof(ctx.cbcMac));
 
-			  // Save key and initialization vector inside context
-				// Calculate CBC-MAC
-			  aes256CbcMacInit(&ctx, BootloaderKey);
-				aes256CbcMacUpdate(&ctx, ProgrammFlashPage->raw,
-					                 sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
+				// Initialize key schedule inside CTX
+				aes256_init(BootloaderKey, &(ctx.aesCtx));
 
 				// Only write data if CBC-MAC matches
-				if(aes256CbcMacCompare(&ctx, ProgrammFlashPage->cbcMac)){
+				if(aes256CbcMacReverseCompare(&ctx, ProgrammFlashPage->raw,
+				 	                 						sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac)))
+				{
 					// TODO timeout, prevent brute force
 					Endpoint_StallTransaction();
 					return;
 				}
+
+			  // // Save key and initialization vector inside context
+				// // Calculate CBC-MAC
+			  // aes256CbcMacInit(&ctx, BootloaderKey);
+				// aes256CbcMacUpdate(&ctx, ProgrammFlashPage->raw,
+				// 	                 sizeof(ProgrammFlashPage_t) - sizeof_member(ProgrammFlashPage_t, cbcMac));
+				//
+				// // Only write data if CBC-MAC matches
+				// if(aes256CbcMacCompare(&ctx, ProgrammFlashPage->cbcMac)){
+				// 	// TODO timeout, prevent brute force
+				// 	Endpoint_StallTransaction();
+				// 	return;
+				// }
 
 				// // Only write data if CBC-MAC matches
 				// if(aes256CbcMacInitUpdateCompare(&ctx, BootloaderKey,
@@ -304,10 +299,6 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 
 				//uart_putchars("Programming\r\n");
 				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage->PageData);
-
-				// Acknowledge SetReport request
-				Endpoint_ClearStatusStageHostToDevice();
-				break;
 			}
 			// Process changeBootloaderKey command
 			else if(length == sizeof(changeBootloaderKey_t))
