@@ -52,7 +52,7 @@ const USB_Descriptor_HIDReport_Datatype_t HIDReport[] =
 		HID_RI_LOGICAL_MINIMUM(8, 0x00),
 		HID_RI_LOGICAL_MAXIMUM(8, 0xFF),
 		HID_RI_REPORT_SIZE(8, 0x08),
-		HID_RI_REPORT_COUNT(16, (sizeof(uint16_t) + SPM_PAGESIZE + AES256_CBC_LENGTH)),
+		HID_RI_REPORT_COUNT(16, (sizeof(uint16_t) + SPM_PAGESIZE + AES256_CBC_LENGTH)), //TODO
 		HID_RI_OUTPUT(8, HID_IOF_DATA | HID_IOF_VARIABLE | HID_IOF_ABSOLUTE | HID_IOF_NON_VOLATILE),
 	HID_RI_END_COLLECTION(0),
 };
@@ -67,7 +67,7 @@ const USB_Descriptor_Device_t DeviceDescriptor =
 	.Header                 = {.Size = sizeof(USB_Descriptor_Device_t), .Type = DTYPE_Device},
 
 	.USBSpecification       = VERSION_BCD(1,1,0),
-	.Class                  = USB_CSCP_NoDeviceClass, // TODO check
+	.Class                  = USB_CSCP_NoDeviceClass,
 	.SubClass               = USB_CSCP_NoDeviceSubclass,
 	.Protocol               = USB_CSCP_NoDeviceProtocol,
 
@@ -159,7 +159,7 @@ uint16_t CALLBACK_USB_GetDescriptor(const uint16_t wValue,
 	const void* Address = NULL;
 	uint16_t    Size    = NO_DESCRIPTOR;
 
-	/* If/Else If chain compiles slightly smaller than a switch case */
+	/* If/Else chain compiles slightly smaller than a switch case */
 	if (DescriptorType == DTYPE_Device)
 	{
 		Address = &DeviceDescriptor;

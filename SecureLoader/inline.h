@@ -1,4 +1,5 @@
 
+
 /** Event handler for the USB_ControlRequest event. This is used to catch and process control requests sent to
  *  the device from the USB host before passing along unhandled control requests to the library for processing
  *  internally.
@@ -61,7 +62,7 @@ void EVENT_USB_Device_ControlRequest(void)
 				}
 
 				// Acknowledge SetReport request
-				Endpoint_ClearStatusStage();
+				Endpoint_ClearStatusStageHostToDevice();
 				return;
 			}
 			// Process ProgrammFlashPage command
@@ -126,7 +127,7 @@ void EVENT_USB_Device_ControlRequest(void)
 				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage->PageData);
 
 				// Acknowledge SetReport request
-				Endpoint_ClearStatusStage();
+				Endpoint_ClearStatusStageHostToDevice();
 				break;
 			}
 			// Process changeBootloaderKey command
@@ -176,7 +177,7 @@ void EVENT_USB_Device_ControlRequest(void)
 				//TODO decrypt key
 
 				// Acknowledge SetReport request
-				Endpoint_ClearStatusStage();
+				Endpoint_ClearStatusStageHostToDevice();
 			}
 			// No valid data length found
 			else{
@@ -184,7 +185,7 @@ void EVENT_USB_Device_ControlRequest(void)
 			}
 
 			// Acknowledge SetReport request
-			Endpoint_ClearStatusStage();
+			Endpoint_ClearStatusStageHostToDevice();
 			break;
 		}
 
@@ -235,6 +236,8 @@ void EVENT_USB_Device_ControlRequest(void)
 	}
 }
 
+
+
 // USB2.0 section 9.4.5 page 254
 static void USB_Device_GetStatus(void)
 {
@@ -272,14 +275,12 @@ static void USB_Device_GetStatus(void)
     }
   }
 
-  // TODO merge with upper function
   Endpoint_ClearSETUP();
 
   Endpoint_Write_16_LE(CurrentStatus);
   Endpoint_ClearIN();
 
-  // TODO replace clear status stage
-  Endpoint_ClearStatusStage();
+  Endpoint_ClearStatusStageDeviceToHost();
 }
 
 // USB2.0 section 9.4.9 page 258
@@ -326,7 +327,7 @@ static void USB_Device_ClearSetFeature(void)
 
 	Endpoint_ClearSETUP();
 
-	Endpoint_ClearStatusStage();
+	Endpoint_ClearStatusStageHostToDevice();
 }
 
 
@@ -339,11 +340,10 @@ static void USB_Device_SetAddress(void)
 	// Record Address, keep ADDEN cleared
 	USB_Device_SetDeviceAddress(DeviceAddress);
 
-	// TODO move upwards?
 	Endpoint_ClearSETUP();
 
 	// Send IN ZLP
-	Endpoint_ClearStatusStage();
+	Endpoint_ClearStatusStageHostToDevice();
 
 	// Wait for IN endpoint to get ready
 	while (!(Endpoint_IsINReady()));
@@ -358,15 +358,6 @@ static void USB_Device_GetDescriptor(void)
 	const void* DescriptorPointer;
 	uint16_t    DescriptorSize;
 
-	// TODO add internal serial otherwise
-	// #if !defined(NO_INTERNAL_SERIAL) && (USE_INTERNAL_SERIAL != NO_DESCRIPTOR)
-	// if (USB_ControlRequest.wValue == ((DTYPE_String << 8) | USE_INTERNAL_SERIAL))
-	// {
-	// 	USB_Device_GetInternalSerialDescriptor();
-	// 	return;
-	// }
-	// #endif
-
 	if ((DescriptorSize = CALLBACK_USB_GetDescriptor(USB_ControlRequest.wValue,
 																									 USB_ControlRequest.wIndex,
 																									 &DescriptorPointer)) == NO_DESCRIPTOR)
@@ -377,61 +368,39 @@ static void USB_Device_GetDescriptor(void)
 	Endpoint_ClearSETUP();
 
 	// TODO improve write control stream/inline
-	#if defined(USE_RAM_DESCRIPTORS)
 	Endpoint_Write_Control_Stream_LE(DescriptorPointer, DescriptorSize);
-	#elif defined(USE_EEPROM_DESCRIPTORS)
-	#error not implemented
-	Endpoint_Write_Control_EStream_LE(DescriptorPointer, DescriptorSize);
-	#elif defined(USE_FLASH_DESCRIPTORS)
-	#error not implemented
-	Endpoint_Write_Control_PStream_LE(DescriptorPointer, DescriptorSize);
-	#else
-	// TODO improve this check
-	#error no descriptor type specified
-	#endif
 
-	Endpoint_ClearOUT();
+	Endpoint_ClearStatusStageDeviceToHost();
 }
 
 static void USB_Device_GetConfiguration(void)
 {
-	// TODO teensy waits for in ready?
 	Endpoint_ClearSETUP();
 
 	Endpoint_Write_8(USB_Device_ConfigurationNumber);
 	Endpoint_ClearIN();
 
-	// TODO teensy doesnt use this
-	Endpoint_ClearStatusStage();
-	// TODO will result in:
-	// while (!(Endpoint_IsINReady()));
+	Endpoint_ClearStatusStageDeviceToHost();
 }
 
 static void USB_Device_SetConfiguration(void)
 {
 	USB_Device_ConfigurationNumber = (uint8_t)USB_ControlRequest.wValue;
 
-	// TODO is this check required?
 	if (USB_Device_ConfigurationNumber > FIXED_NUM_CONFIGURATIONS)
 		return;
 
-	#if !defined(FIXED_NUM_CONFIGURATIONS)
-	// TODO improve
-	#error Please define FIXED_NUM_CONFIGURATIONS
-	#endif
-
 	Endpoint_ClearSETUP();
 
-	Endpoint_ClearStatusStage();
+	Endpoint_ClearStatusStageHostToDevice();
 
 	/* Setup HID Report Endpoint */
-	//EVENT_USB_Device_ConfigurationChanged(); // TODO inlined
-	// TODO inline configure function itself?
 	Endpoint_ConfigureEndpoint(HID_IN_EPADDR, EP_TYPE_INTERRUPT, HID_IN_EPSIZE, 1);
 }
 
 void USB_Device_ProcessControlRequest(void)
 {
+	// TODO inline again?
 	uint8_t* RequestHeader = (uint8_t*)&USB_ControlRequest;
 
 	for (uint8_t RequestHeaderByte = 0; RequestHeaderByte < sizeof(USB_Request_Header_t); RequestHeaderByte++)
@@ -449,7 +418,8 @@ void USB_Device_ProcessControlRequest(void)
 				if ((bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE)) ||
 					(bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_ENDPOINT)))
 				{
-					USB_Device_GetStatus(); // used, fully optimized
+					return; // TODO doesnt seem to be essential
+					USB_Device_GetStatus(); // optional, fully optimized
 				}
 
 				break;
@@ -465,7 +435,7 @@ void USB_Device_ProcessControlRequest(void)
 			case REQ_SetAddress:
 				if (bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_STANDARD | REQREC_DEVICE))
 				{
-				  USB_Device_SetAddress(); //used, better than teensy, Endpoint_ClearSETUP might be moved
+				  USB_Device_SetAddress(); // essential, fully optimized, better than teensy
 				}
 				break;
 			case REQ_GetDescriptor:
@@ -479,14 +449,15 @@ void USB_Device_ProcessControlRequest(void)
 			case REQ_GetConfiguration:
 				if (bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE))
 				{
-				  USB_Device_GetConfiguration(); //used, different TODO
+					return; // TODO doesnt seem to be essential
+				  USB_Device_GetConfiguration(); // optional, fully optomized
 				}
 
 				break;
 			case REQ_SetConfiguration:
 				if (bmRequestType == (REQDIR_HOSTTODEVICE | REQTYPE_STANDARD | REQREC_DEVICE))
 				{
-				  USB_Device_SetConfiguration(); //used
+				  USB_Device_SetConfiguration(); // essential, fully optomized
 				}
 
 				break;

@@ -145,19 +145,18 @@ int main(void)
 	/* Enable global interrupts so that the USB stack can function */
 	GlobalInterruptEnable();
 
-	// TODO Wait for USB VBUS information connection (first enable interrupts)
-	//while(!USB_Device_ConfigurationNumber);
-
 	//uart_putchars("\r\nStartup\r\n-----------------------------------------\r\n");
 
   // Simpler version of USB_USBTask()
 	// TODO use interrupt as alternative
 	do{
+#if !defined(INTERRUPT_CONTROL_ENDPOINT)
 		// TODO why required?
 		Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 
 		if (Endpoint_IsSETUPReceived())
 		  USB_Device_ProcessControlRequest();
+#endif
 	} while (RunBootloader);
 
 	/* Disconnect from the host - USB interface will be reset later along with the AVR */
