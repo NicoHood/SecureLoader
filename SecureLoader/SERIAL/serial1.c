@@ -73,7 +73,13 @@ void hexdump(void * data, size_t len)
 		else{
 			uart_putchar('A'+l-10);
 		}
-		uart_putchar('\t');
+    if((i % 16) != 15){
+      uart_putchar('\t');
+    }
+    else{
+      uart_putchar('\r');
+      uart_putchar('\n');
+    }
 	}
 	uart_putchar('\r');
 	uart_putchar('\n');

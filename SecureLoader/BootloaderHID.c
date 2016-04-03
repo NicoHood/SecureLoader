@@ -58,7 +58,10 @@ typedef union{
 			uint16_t PageAddress;
 			uint8_t padding[AES256_CBC_LENGTH];
 		};
-		uint16_t PageData[SPM_PAGESIZE/2];
+		union{
+			uint16_t PageDataWords[SPM_PAGESIZE/2];
+			uint8_t PageDataBytes[SPM_PAGESIZE];
+		};
 		uint8_t cbcMac[AES256_CBC_LENGTH];
 	};
 } ProgrammFlashPage_t;
@@ -108,9 +111,40 @@ static uint8_t EEMEM BootloaderKeyEEPROM[32] = {
 // Bootloader Key (local ram copy)
 static uint8_t BootloaderKeyRam[32];
 
+// Data to change the Bootloader Key
+typedef union{
+	uint8_t raw[0];
+	uint8_t bytes[SPM_PAGESIZE];
+	uint16_t words[SPM_PAGESIZE/2];
+	struct{
+		uint8_t BootloaderKey[32];
+	};
+} secureBootloaderSection_t;
+
+static secureBootloaderSection_t SBS;
+
+static void loadSBS(void)
+{
+	// Load PROGMEM data into temporary SBS RAM structure
+	BootloaderAPI_ReadPage(FLASHEND - SPM_PAGESIZE + 1, SBS.raw);
+}
+
+static void writeSBS(void)
+{
+	// Write local RAM copy of SBS back to PROGMEM
+	BootloaderAPI_EraseFillWritePage(FLASHEND - SPM_PAGESIZE + 1, SBS.words);
+}
+
+static void initSBS(void) __attribute__ ((used, naked, section (".init5")));
+static void initSBS(void)
+{
+	loadSBS();
+}
 
 // AES256 CBC-MAC context variable
 static aes256CbcMacCtx_t ctx;
+
+//#define USE_EEPROM_KEY
 
 #define PORTID_BUTTON				 PORTE6
 #define PORT_BUTTON          PORTE
@@ -232,12 +266,20 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			// Acknowledge reading to the host
 			Endpoint_ClearOUT();
 
-			// (Re)load the eeprom bootloader key inside eeprom TODO move?
+			#ifdef USE_EEPROM_KEY
+			// (Re)load the EEPROM Bootloader Key inside RAM TODO move? reimplement with 8 bit
 			eeprom_read_block((void*)BootloaderKeyRam, (const void*)BootloaderKeyEEPROM, sizeof(BootloaderKeyRam));
 
 			// Initialize key schedule inside CTX
-			// TODO inline with eeprom read above
 			aes256_init(BootloaderKeyRam, &(ctx.aesCtx));
+
+			#else
+			// (Re)load the PROGMEM Bootloader Key inside RAM
+			loadSBS();
+
+			// Initialize key schedule inside CTX
+			aes256_init(SBS.BootloaderKey, &(ctx.aesCtx));
+			#endif
 
 			// Process SetFlashPage command
 			if(0){
@@ -283,7 +325,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				}
 
 				// Loop will update cbcMac for each block
-				uint16_t dataLen = sizeof_member(ProgrammFlashPage_t, PageData) + sizeof_member(ProgrammFlashPage_t, cbcMac);
+				uint16_t dataLen = sizeof_member(ProgrammFlashPage_t, PageDataWords) + sizeof_member(ProgrammFlashPage_t, cbcMac);
 			  for (uint16_t i=0; i<dataLen; i+=AES256_CBC_LENGTH)
 			  {
 			    // Decrypt next block
@@ -343,7 +385,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				// }
 
 				//uart_putchars("Programming\r\n");
-				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage->PageData);
+				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage->PageDataWords);
 			}
 			// Process changeBootloaderKeyRam command
 			else if(length == sizeof(changeBootloaderKey_t))
@@ -366,9 +408,16 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 					}
 				}
 
-				// TODO reimplement for 8 bit
+				#ifdef USE_EEPROM_KEY
 				// Write new BootloaderKey to EEPROM
-				eeprom_update_block (changeBootloaderKey->raw, &BootloaderKeyEEPROM, sizeof(BootloaderKeyEEPROM));
+				// TODO use write, as a BK change is only available for authorized people
+				BootloaderAPI_UpdateEEPROM(changeBootloaderKey->raw, &BootloaderKeyEEPROM, sizeof(BootloaderKeyEEPROM));
+
+				#else
+				// Write new BootloaderKey to PROGMEM (SBS)
+				memcpy(SBS.BootloaderKey, changeBootloaderKey->BootloaderKey, sizeof(SBS.BootloaderKey));
+				writeSBS();
+				#endif
 
 
 				// // Save key and initialization vector inside context

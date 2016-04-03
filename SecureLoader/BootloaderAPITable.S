@@ -28,30 +28,30 @@
   this software.
 */
 
+
 ; Trampolines to actual API implementations if the target address is outside the
 ; range of a rjmp instruction (can happen with large bootloader sections)
 .section .apitable_trampolines, "ax"
 .global BootloaderAPI_Trampolines
+
+
+; BootloaderPROGMEMKey 32 byte, 256 bit
+.byte 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe
+.byte	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81
+.byte	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7
+.byte	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+
+; useHardwareButton
+.byte 0x00
+
 BootloaderAPI_Trampolines:
 
-	BootloaderAPI_ErasePage_Trampoline:
-		jmp BootloaderAPI_ErasePage
-	BootloaderAPI_WritePage_Trampoline:
-		jmp BootloaderAPI_WritePage
-	BootloaderAPI_FillWord_Trampoline:
-		jmp BootloaderAPI_FillWord
-	BootloaderAPI_ReadSignature_Trampoline:
-		jmp BootloaderAPI_ReadSignature
-	BootloaderAPI_ReadFuse_Trampoline:
-		jmp BootloaderAPI_ReadFuse
-	BootloaderAPI_ReadLock_Trampoline:
-		jmp BootloaderAPI_ReadLock
-	BootloaderAPI_WriteLock_Trampoline:
-		jmp BootloaderAPI_WriteLock
+  .word 0xAAAA ; Signature for a LUFA class bootloader
+
 	BootloaderAPI_aes256_init_ecb_Trampoline:
 		jmp aes256_init_ecb
 	BootloaderAPI_aes256_encrypt_ecb_Trampoline:
-		jmp aes256_encrypt_ecb
+		jmp aes256_decrypt_ecb
 	BootloaderAPI_aes256_decrypt_ecb_Trampoline:
 		ret
 	BootloaderAPI_UNUSED4:
@@ -66,19 +66,11 @@ BootloaderAPI_Trampolines:
 .global BootloaderAPI_JumpTable
 BootloaderAPI_JumpTable:
 
-	rjmp BootloaderAPI_ErasePage_Trampoline
-	rjmp BootloaderAPI_WritePage_Trampoline
-	rjmp BootloaderAPI_FillWord_Trampoline
-	rjmp BootloaderAPI_ReadSignature_Trampoline
-	rjmp BootloaderAPI_ReadFuse_Trampoline
-	rjmp BootloaderAPI_ReadLock_Trampoline
-	rjmp BootloaderAPI_WriteLock_Trampoline
 	rjmp BootloaderAPI_aes256_init_ecb_Trampoline
 	rjmp BootloaderAPI_aes256_encrypt_ecb_Trampoline
 	rjmp BootloaderAPI_aes256_decrypt_ecb_Trampoline
 	rjmp BootloaderAPI_UNUSED4 ; UNUSED ENTRY 4
 	rjmp BootloaderAPI_UNUSED5 ; UNUSED ENTRY 5
-
 
 
 ; Bootloader table signatures and information

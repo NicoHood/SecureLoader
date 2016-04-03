@@ -27,6 +27,7 @@ LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAG
 # device's fuses.
 FLASH_SIZE_KB        := 32
 BOOT_SECTION_SIZE_KB := 4
+SPM_PAGESIZE				 := 128
 
 # Special optimization (most important at the top)
 # COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
@@ -42,13 +43,13 @@ OPTIONS += -DBAUD=115200
 OPTIONS += -DSTARTUP_TABLES
 OPTIONS += -DF_USB=$(F_USB)
 
-#SRC += BootloaderAPITable.S
+SRC += BootloaderAPITable.S
 
 # Avrdude settings
 AVRDUDE_PORT       = /dev/ttyACM0
 AVRDUDE_PROGRAMMER = stk500v1
 AVRDUDE_FLAGS      = -b 19200
-AVRDUDE_FUSES      = -Ulock:w:0x0C:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
+AVRDUDE_FUSES      = -Ulock:w:0x1C:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
 
 
 # Some helpers to get all the .c and .h files.
@@ -66,9 +67,9 @@ BOOT_SEC_OFFSET       = $(call CALC_ADDRESS_IN_HEX, ($(FLASH_SIZE_KB) * 1024) - 
 # Bootloader linker section flags for relocating the API table sections to
 # known FLASH addresses - these should not normally be user-edited.
 BOOT_SECTION_LD_FLAG  = -Wl,--section-start=$(strip $(1))=$(call BOOT_SEC_OFFSET, $(3)) -Wl,--undefined=$(strip $(2))
-BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_trampolines, BootloaderAPI_Trampolines, 96)
-BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   32)
-BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
+BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_trampolines, BootloaderAPI_Trampolines, $(SPM_PAGESIZE))
+#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   32)
+#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
 
 # Default target
 all:

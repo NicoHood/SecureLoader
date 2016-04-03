@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 	}
 
 	printf_verbose("Changing key!");
-	teensy_write(&CK, sizeof(CK), 3.0);
+	teensy_write(&CK, sizeof(CK), 6.0);
 
 	printf_verbose("Key Changed!");
 
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 			// don't waste time on blocks that are unused,
 			// but always do the first one to erase the chip
 			printf_verbose(" Empty block!");
-			//continue;
+			continue;
 		}
 		if(addr >= code_size - 4*1024){
 			printf_verbose(" Skipping BootLoader Section!");
@@ -213,21 +213,45 @@ int main(int argc, char **argv)
 			buf[0] = (addr >> 8) & 255;
 			buf[1] = (addr >> 16) & 255;
 		}
-		// Fill the rest with zeros.
-		// This is required as CBC-MAC needs multiple of 16 bytes as input.
-		memset(buf + 2, 0x00, AES256_CBC_LENGTH - 2);
-		ihex_get_data(addr, block_size, buf + AES256_CBC_LENGTH);
+
+		#define SPM_PAGESIZE block_size
+		typedef union{
+			uint8_t raw[0];
+			struct{
+				union{
+					uint16_t PageAddress;
+					uint8_t padding[AES256_CBC_LENGTH];
+				};
+				union{
+					uint16_t PageDataWords[SPM_PAGESIZE/2];
+					uint8_t PageDataBytes[SPM_PAGESIZE];
+				};
+				uint8_t cbcMac[AES256_CBC_LENGTH];
+			};
+		} ProgrammFlashPage_t;
+
+		// Create a new flash page data structure
+		ProgrammFlashPage_t ProgrammFlashPage;
+
+		// Fill padding and CBC-MAC with zeros TODO padding overwrites the addres!
+		// TODO you could also fill the whole struct with zeros instead
+		memset(ProgrammFlashPage.padding, 0x00, sizeof(ProgrammFlashPage.padding));
+		memset(ProgrammFlashPage.cbcMac, 0x00, sizeof(ProgrammFlashPage.cbcMac)); //TODO done in cbc mac function
+
+		// Load the actual flash page address and data
+		ProgrammFlashPage.PageAddress = addr;
+		ihex_get_data(addr, sizeof(ProgrammFlashPage.PageDataBytes), ProgrammFlashPage.PageDataBytes);
 
 		// Save key and initialization vector inside context
-		// Calculate and save CBC-MAC
 		aes256CbcMacInit(&ctx, key2);
-		aes256CbcMacUpdate(&ctx, buf, block_size + AES256_CBC_LENGTH);
-		memcpy(buf + block_size + AES256_CBC_LENGTH, ctx.cbcMac, AES256_CBC_LENGTH);
 
-		r = teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, first_block ? 3.0 : 0.25*4);
-		//printf_verbose("\n");
-		//hexdump(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH);
-		//printf_verbose("\n");
+		// Calculate and save CBC-MAC
+		aes256CbcMacUpdate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));
+		memcpy(ProgrammFlashPage.cbcMac, ctx.cbcMac, sizeof(ProgrammFlashPage.cbcMac));
+
+		// Write data to the board
+		//hexdump(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
+		r = teensy_write(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage), 9.0);
 		if (!r) die("error writing to Teensy\n");
 		first_block = 0;
 	}

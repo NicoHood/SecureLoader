@@ -39,14 +39,17 @@
 	/* Includes: */
 		#include <avr/io.h>
 		#include <avr/boot.h>
+		#include <avr/pgmspace.h>
 		#include <stdbool.h>
 
 		//#include <LUFA/Common/Common.h>
 
 		#if (FLASHEND > USHRT_MAX)
-		typedef uint32_t address_size_t;
+			typedef uint32_t address_size_t;
+			#define pgm_read_byte_auto(address) pgm_read_byte_far(address)
 		#else
-		typedef uint16_t address_size_t;
+			typedef uint16_t address_size_t;
+			#define pgm_read_byte_auto(address) pgm_read_byte_near(address)
 		#endif
 
 	/* Function Prototypes: */
@@ -84,6 +87,32 @@
 
 			/* Re-enable RWW section */
 			boot_rww_enable();
+		}
+
+		static inline void BootloaderAPI_ReadPage(const address_size_t Address, uint8_t* data)
+		{
+			for(uint8_t i = 0; i < SPM_PAGESIZE; i++){
+				*data = pgm_read_byte_auto(Address + i);
+				data++;
+			}
+		}
+
+		static inline void BootloaderAPI_WriteEEPROM(uint8_t* data, void* Address, uint8_t length)
+		{
+			// Write data (max 8 bit length) and wait for eeprom to finish
+			for(uint8_t i = 0; i < length; i++){
+				eeprom_write_byte(Address + i, *((uint8_t*)data + i));
+			}
+			eeprom_busy_wait();
+		}
+
+		static inline void BootloaderAPI_UpdateEEPROM(uint8_t* data, void* Address, uint8_t length)
+		{
+			// Write data (max 8 bit length) and wait for eeprom to finish
+			for(uint8_t i = 0; i < length; i++){
+				eeprom_update_byte(Address + i, *((uint8_t*)(data + i)));
+			}
+			eeprom_busy_wait();
 		}
 
 #endif

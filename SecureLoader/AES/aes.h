@@ -40,7 +40,7 @@ typedef struct {
 } aes256_context;
 
 #if !defined(BACK_TO_TABLES) && defined(STARTUP_TABLES)
-void aes256_init_sboxes(void)  __attribute__ ((used, naked, section (".init5")));
+void aes256_init_sboxes(void) __attribute__ ((used, naked, section (".init5")));
 #endif
 
 void aes256_init_ecb(aes256_context *, uint8_t * /* key */);
