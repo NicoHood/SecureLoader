@@ -22,9 +22,6 @@
 #define F(x)   (((x)<<1) ^ ((((x)>>7) & 1) * 0x1b))
 #define FD(x)  (((x) >> 1) ^ (((x) & 1) ? 0x8d : 0))
 
-#if defined(__AVR__)
-//#define BACK_TO_TABLES
-#endif
 #ifdef BACK_TO_TABLES
 
 const uint8_t sbox[256] __attribute__ ((__progmem__)) = {		// forward s-box
@@ -132,7 +129,7 @@ uint8_t gf_mulinv(uint8_t x) // calculate multiplicative inverse
 } /* gf_mulinv */
 
 /* -------------------------------------------------------------------------- */
-uint8_t rj_sbox(uint8_t x)
+uint8_t rj_sbox_calc(uint8_t x)
 {
     uint8_t y, sb;
 
@@ -144,7 +141,7 @@ uint8_t rj_sbox(uint8_t x)
 } /* rj_sbox */
 
 /* -------------------------------------------------------------------------- */
-uint8_t rj_sbox_inv(uint8_t x)
+uint8_t rj_sbox_inv_calc(uint8_t x)
 {
     uint8_t y, sb;
 
@@ -154,6 +151,36 @@ uint8_t rj_sbox_inv(uint8_t x)
 
     return gf_mulinv(sb);
 } /* rj_sbox_inv */
+
+#ifdef STARTUP_TABLES
+
+uint8_t sbox[256];
+uint8_t sboxinv[256];
+
+#define rj_sbox(x)     (sbox[x])
+#define rj_sbox_inv(x) (sboxinv[x])
+
+/* -------------------------------------------------------------------------- */
+void aes256_init_sboxes(void) // pregenerate tables at startup
+{
+  uint8_t i = 0;
+  do {
+    sbox[i] = rj_sbox_calc(i);
+    i++;
+  } while (i);
+  i = 0;
+  do {
+    sboxinv[i] = rj_sbox_inv_calc(i);
+    i++;
+  } while (i);
+} /* aes256_init_sboxes */
+
+#else
+
+#define rj_sbox(x)     (rj_sbox_calc(x))
+#define rj_sbox_inv(x) (rj_sbox_inv_calc(x))
+
+#endif
 
 #endif
 

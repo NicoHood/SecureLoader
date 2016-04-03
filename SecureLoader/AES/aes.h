@@ -30,11 +30,18 @@
 extern "C" {
 #endif
 
+//#define BACK_TO_TABLES
+//#define STARTUP_TABLES
+
 typedef struct {
     uint8_t key[32];
     uint8_t enckey[32];
     uint8_t deckey[32];
 } aes256_context;
+
+#if !defined(BACK_TO_TABLES) && defined(STARTUP_TABLES)
+void aes256_init_sboxes(void)  __attribute__ ((used, naked, section (".init5")));
+#endif
 
 void aes256_init_ecb(aes256_context *, uint8_t * /* key */);
 void aes256_done(aes256_context *);
