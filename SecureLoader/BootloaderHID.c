@@ -134,7 +134,6 @@ static inline bool JumpToBootloader(void)
 void Application_Jump_Check(void)
 {
 	// Turn off the watchdog
-	uint8_t mcusr_mirror = MCUSR;
   MCUSR = 0;
   wdt_disable();
 
@@ -356,14 +355,12 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
 			    aes256_dec(changeBootloaderKey->raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
 				}
-				// aes256_dec(changeBootloaderKey->raw + (0 * AES256_CBC_LENGTH), &(ctx.aesCtx));
-				// aes256_dec(changeBootloaderKey->raw + (1 * AES256_CBC_LENGTH), &(ctx.aesCtx));
-				// aes256_dec(changeBootloaderKey->raw + (2 * AES256_CBC_LENGTH), &(ctx.aesCtx));
 
-				// Check if MAC matches (0 -16)
+				// Check if MAC matches (0-15)
 				for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
 					if(changeBootloaderKey->Mac[i] != i){
 						// TODO this stall is ignored. it will not change the key, but will not cause an error
+						// TODO timeout
 						Endpoint_StallTransaction();
 						return;
 					}
@@ -404,6 +401,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			}
 			// No valid data length found
 			else{
+				Endpoint_StallTransaction();
 				return;
 			}
 

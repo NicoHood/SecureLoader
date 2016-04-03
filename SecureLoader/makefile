@@ -29,23 +29,17 @@ FLASH_SIZE_KB        := 32
 BOOT_SECTION_SIZE_KB := 4
 
 # Special optimization (most important at the top)
-COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
-CC_FLAGS  += -flto -fuse-linker-plugin
-LD_FLAGS  += -flto -fuse-linker-plugin
+# COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
+# CC_FLAGS  += -flto -fuse-linker-plugin
+# LD_FLAGS  += -flto -fuse-linker-plugin
 CC_FLAGS  += -fno-split-wide-types
 CC_FLAGS  += -fno-tree-scev-cprop
-
-# This flag is required for bootloaders as GCC will emit invalid jump table
-# assembly code for devices with large amounts of flash; the jump table target
-# is extracted from FLASH without using the correct ELPM instruction, resulting
-# in a pseudo-random jump target.
-# TODO wait for dmbs to include this fix?
-CC_FLAGS  += -fno-jump-tables
 
 OPTIONS += -DVENDORID=0x03EB
 OPTIONS += -DPRODUCTID=0x2067
 OPTIONS += -DBAUD=115200
-OPTIONS += -DBACK_TO_TABLES
+#OPTIONS += -DBACK_TO_TABLES
+OPTIONS += -DSTARTUP_TABLES
 OPTIONS += -DF_USB=$(F_USB)
 
 #SRC += BootloaderAPITable.S

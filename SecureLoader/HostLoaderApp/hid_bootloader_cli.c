@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 			// don't waste time on blocks that are unused,
 			// but always do the first one to erase the chip
 			printf_verbose(" Empty block!");
-			continue;
+			//continue;
 		}
 		if(addr >= code_size - 4*1024){
 			printf_verbose(" Skipping BootLoader Section!");
