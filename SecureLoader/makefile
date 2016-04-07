@@ -92,7 +92,7 @@ noreboot:
 	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v -n ./HostLoaderApp/blink/blink1000.hex
 
 upload:
-	cd HostLoaderApp && $(MAKE) && cd ..
+	cd HostLoaderApp && $(MAKE) clean && $(MAKE) && cd ..
 	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v ./HostLoaderApp/blink/blink1000.hex
 
 uploadfast:

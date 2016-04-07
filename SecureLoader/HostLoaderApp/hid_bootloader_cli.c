@@ -188,8 +188,8 @@ int main(int argc, char **argv)
 	}
 
 	printf_verbose("Changing key!\r\n");
-	r = teensy_write(&CK, sizeof(CK), 6.0);
-	if (!r) die("error writing to Teensy\n");
+	//r = teensy_write(&CK, sizeof(CK), 6.0);
+	//if (!r) die("error writing to Teensy\n");
 
 	printf_verbose("Key Changed!\r\n");
 
@@ -244,7 +244,7 @@ int main(int argc, char **argv)
 		ihex_get_data(addr, sizeof(ProgrammFlashPage.PageDataBytes), ProgrammFlashPage.PageDataBytes);
 
 		// Save key and initialization vector inside context
-		aes256CbcMacInit(&ctx, key2);
+		aes256CbcMacInit(&ctx, key); // TODO key2
 
 		// Calculate and save CBC-MAC
 		aes256CbcMacUpdate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));
@@ -281,7 +281,27 @@ int main(int argc, char **argv)
 			buf[1] = (addr >> 16) & 255;
 		}
 
-		teensy_write(&addr, sizeof(addr), 0.25);
+		// Request page
+		r = teensy_write(buf, 2, 0.25);
+		if (!r) die("error writing to Teensy\n");
+
+		// Get data
+		uint8_t verifybuf[SPM_PAGESIZE];
+		r = teensy_read(verifybuf, sizeof(verifybuf), 3);
+		if (!r) die("error reading Teensy\n");
+
+		uint8_t originalbuf[SPM_PAGESIZE];
+		ihex_get_data(addr, sizeof(originalbuf), originalbuf);
+
+		// Compare the data
+		if(memcmp(verifybuf, originalbuf, sizeof(originalbuf))){
+			printf_verbose("Expected:\n");
+			hexdump(originalbuf, sizeof(originalbuf));
+			printf_verbose("Received:\n");
+			hexdump(verifybuf, sizeof(verifybuf));
+			die("Error Verification mismatch\n");
+		}
+
 		// TODO read
 	}
 
@@ -416,6 +436,74 @@ int hard_reboot(void)
 	usb_close(rebootor);
 	if (r < 0) return 0;
 	return 1;
+}
+
+#endif
+
+
+#if defined(USE_HIDAPI)
+
+// http://www.signal11.us/oss/hidapi/
+#include <hidapi.h>
+
+static hid_device* hidapi_device = NULL;
+
+int teensy_open(void)
+{
+	hid_init();
+	hidapi_device = hid_open(0x16C0, 0x0478, NULL);
+
+	if(!hidapi_device){
+		hidapi_device = hid_open(0x03eb, 0x2067, NULL);
+	}
+
+	if (!hidapi_device) return 0;
+	return 1;
+}
+
+int teensy_write(void *buf, int len, double timeout)
+{
+	if (!hidapi_device) return 0;
+
+	// Add report ID (0)
+	uint8_t newbuf[len + 1];
+	newbuf[0] = 0x00;
+	memcpy(newbuf + 1, buf, len);
+
+	int r = hid_write(hidapi_device, newbuf, len + 1);
+	//int r = hid_send_feature_report(hidapi_device, newbuf, len + 1);
+
+	if (r < 0) return 0;
+	return 1;
+}
+
+int teensy_read(void *buf, int len)
+{
+	if (!hidapi_device) return 0;
+
+	// Add report ID (0)
+	uint8_t newbuf[len + 1];
+	newbuf[0] = 0x00;
+
+	int r = hid_get_feature_report(hidapi_device, newbuf, len + 1);
+	memcpy(buf, newbuf + 1, len);
+
+	if (r < 0) return 0;
+	return 1;
+}
+
+void teensy_close(void)
+{
+	if (!hidapi_device) return;
+	hid_close (hidapi_device);
+	hidapi_device = NULL;
+	hid_exit();
+}
+
+int hard_reboot(void)
+{
+	// TODO not implemented
+	return 0;
 }
 
 #endif

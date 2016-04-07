@@ -74,6 +74,8 @@ typedef union{
 	};
 } SetFlashPage_t;
 
+static SetFlashPage_t SelectedFlashPage = { .PageAddress =0xFFFF };
+
 // Data to read a flash page that was requested by the host
 typedef union{
 	uint8_t raw[0];
@@ -185,8 +187,8 @@ void Application_Jump_Check(void)
 	if(ApplicationValid && !JumpToBootloader())
 	{
 		// Clear RAM
-		uint8_t * p;
-		for (p = RAMSTART; p <= RAMEND; p++) {
+		uint8_t* p;
+		for (p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++) {
 			*p = 0x00;
 		}
 
@@ -260,7 +262,6 @@ static void SetupHardware(void)
 static inline void EVENT_USB_Device_ControlRequest(void)
 {
 	// Get input data length
-	// TODO also important for GET_Report?
 	uint16_t length = USB_ControlRequest.wLength;
 
 	/* Process HID specific control requests */
@@ -312,20 +313,14 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			//hexdump(SBS.BootloaderKey, sizeof(SBS.BootloaderKey));
 
 			// Process SetFlashPage command
-			if(0){
-				//TODO remove
-			}
-			else if(length == sizeof_member(SetFlashPage_t, PageAddress))
+			if(length == sizeof_member(SetFlashPage_t, PageAddress))
 			{
 				// Interpret data SetFlashPage_t
-				//TDO different save location (use static var)
-				SetFlashPage_t* SetFlashPage = (SetFlashPage_t*)USB_Buffer;
-				uint16_t PageAddress = SetFlashPage->PageAddress;
+				SelectedFlashPage = *(SetFlashPage_t*)USB_Buffer;
 
 				// Check if the command is a program page command, or a start application command.
 				// Do not validate PageAddress, we do this in the GetReport request.
-				// TODO move to feature request?
-				if (PageAddress == COMMAND_STARTAPPLICATION) {
+				if (SelectedFlashPage.PageAddress == COMMAND_STARTAPPLICATION) {
 					RunBootloader = false;
 				}
 			}
@@ -334,14 +329,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 			{
 				// Interpret data as ProgrammFlashPage_t
 				ProgrammFlashPage_t* ProgrammFlashPage = (ProgrammFlashPage_t*)USB_Buffer;
-				uint16_t InputPageAddress = ProgrammFlashPage->PageAddress;
-
-				// Read the destination address
-				#if (FLASHEND > USHRT_MAX)
-				uint32_t PageAddress = ((uint32_t)InputPageAddress << 8);
-				#else
-				uint16_t PageAddress = InputPageAddress;
-				#endif
+				address_size_t PageAddress = getPageAddress(ProgrammFlashPage->PageAddress);
 
 				// TODO move down saves 2 bytes
 				// Do not overwrite the bootloader or write out of bounds
@@ -382,6 +370,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				changeBootloaderKey_t* changeBootloaderKey = (changeBootloaderKey_t*)USB_Buffer;
 
 				// Decrypt all blocks
+				// TODO use CBC
 				for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
 			    aes256_dec(changeBootloaderKey->raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
 				}
@@ -423,33 +412,34 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 
 		case HID_REQ_GetReport:
 		{
-
-			uint16_t InputPageAddress = (uint16_t*)USB_Buffer;
-
-			//TODO check windex
-			// if (windex == 0)
-			// {
-			// 	RunBootloader = false;
-			// }
-
-			// Read the source address
-			#if (FLASHEND > USHRT_MAX)
-			uint32_t PageAddress = ((uint32_t)InputPageAddress << 8);
-			#else
-			uint16_t PageAddress = InputPageAddress;
-			#endif
-
-			// Do not overwrite the bootloader or write out of bounds
-			if ((PageAddress >= BOOT_START_ADDR) || (PageAddress & (SPM_PAGESIZE - 1)))
+			// Only response to feature request that request a flash page.
+			// Set the page address first via SetReport.
+			if((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature
+			   || length >= sizeof(ReadFlashPage_t))
 			{
-				Endpoint_StallTransaction();
-				return;
-			}
+				// Acknowledge setup data
+				Endpoint_ClearSETUP();
 
-			// Read flash page TODO where temporary buffer?
-			// TODO cast usb buffer into ReadFlashPage_t
-			BootloaderAPI_ReadPage(PageAddress, USB_Buffer + 2);
-			Endpoint_Write_Control_Stream_LE(USB_Buffer, SPM_PAGESIZE);
+				// Read the source address
+				address_size_t PageAddress = getPageAddress(SelectedFlashPage.PageAddress);
+
+				// Do not overwrite the bootloader or write out of bounds
+				if ((PageAddress >= BOOT_START_ADDR) || (PageAddress & (SPM_PAGESIZE - 1)))
+				{
+					Endpoint_StallTransaction();
+					return;
+				}
+
+				// Read flash page into temporary buffer
+				ReadFlashPage_t* ReadFlashPage = (ReadFlashPage_t*)USB_Buffer;
+				BootloaderAPI_ReadPage(ReadFlashPage->PageAddress, ReadFlashPage);
+
+				// Write the page data to the PC
+				Endpoint_Write_Control_Stream_LE(ReadFlashPage, sizeof(ReadFlashPage_t));
+
+				// Acknowledge GetReport request
+				Endpoint_ClearStatusStageDeviceToHost();
+			}
 			break;
 		}
 	}
