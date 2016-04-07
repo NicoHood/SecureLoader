@@ -67,9 +67,11 @@ BOOT_SEC_OFFSET       = $(call CALC_ADDRESS_IN_HEX, ($(FLASH_SIZE_KB) * 1024) - 
 # Bootloader linker section flags for relocating the API table sections to
 # known FLASH addresses - these should not normally be user-edited.
 BOOT_SECTION_LD_FLAG  = -Wl,--section-start=$(strip $(1))=$(call BOOT_SEC_OFFSET, $(3)) -Wl,--undefined=$(strip $(2))
-BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_trampolines, BootloaderAPI_Trampolines, $(SPM_PAGESIZE))
-#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   32)
-#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  8)
+BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_functions, BootloaderAPI_functions, $(SPM_PAGESIZE))
+BOOT_API_LD_FLAGS     += $(call BOOT_SECTION_LD_FLAG, .apitable_bootloader_key, BootloaderAPI_bootloader_key, 32)
+#BOOT_API_LD_FLAGS     += $(call BOOT_SECTION_LD_FLAG, .apitable_hardware_button, BootloaderAPI_hardware_button, 34)
+BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   34)
+#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  68)
 
 # Default target
 all:

@@ -57,18 +57,18 @@ ISR(USB_GEN_vect, ISR_BLOCK)
 	}
 }
 
-#if defined(INTERRUPT_CONTROL_ENDPOINT)
-#include "DeviceStandardReq.h" 	// USB_Device_ProcessControlRequest
-ISR(USB_COM_vect, ISR_BLOCK)
-{
-	USB_Device_ProcessControlRequest();
-
-	#if !defined(CONTROL_ONLY_DEVICE)
-		#error Previous selected endpoints will not be restored.
-		#error Add this feature or only use this if you know what you are doing.
-		#error Also EVENT_USB_Device_ControlRequest() needs to be inlined.
-		#error Remove this error to accept.
-		#warning Interrupt control Endpoint uses ~150-200 more bytes of flash
-	#endif
-}
-#endif
+// #if defined(INTERRUPT_CONTROL_ENDPOINT)
+// #include "DeviceStandardReq.h" 	// USB_Device_ProcessControlRequest
+// ISR(USB_COM_vect, ISR_BLOCK)
+// {
+// 	USB_Device_ProcessControlRequest();
+//
+// 	#if !defined(CONTROL_ONLY_DEVICE)
+// 		#error Previous selected endpoints will not be restored.
+// 		#error Add this feature or only use this if you know what you are doing.
+// 		#error Also EVENT_USB_Device_ControlRequest() needs to be inlined.
+// 		#error Remove this error to accept.
+// 		#warning Interrupt control Endpoint uses ~150-200 more bytes of flash
+// 	#endif
+// }
+// #endif

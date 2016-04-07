@@ -53,20 +53,27 @@
 		#endif
 
 	/* Function Prototypes: */
+		void BootloaderAPI_Test(const address_size_t Address, const uint16_t* Words) __attribute__ ((used, section (".apitable_functions")));
 		void    BootloaderAPI_ErasePage(const address_size_t Address);
 		void    BootloaderAPI_WritePage(const address_size_t Address);
 		void    BootloaderAPI_FillWord(const address_size_t Address, const uint16_t Word);
-		static inline void    BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words);
+		static inline bool    BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words);
 		uint8_t BootloaderAPI_ReadSignature(const uint16_t Address);
 		uint8_t BootloaderAPI_ReadFuse(const uint16_t Address);
 		uint8_t BootloaderAPI_ReadLock(void);
 		void    BootloaderAPI_WriteLock(const uint8_t LockBits);
 
-		static inline void BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words)
+		static inline bool BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words)
 		{
 			// TODO only write data if its new, to preserv flash destruction on replay attacks
 			// add check inside loop
 			// move erase down (works)
+			//hexdump(&Address, 2);
+
+			// Do not write out of bounds TODO FLASHEND
+			if (Address & (SPM_PAGESIZE - 1)) {
+				return true;
+			}
 
 			/* Erase the given FLASH page, ready to be programmed */
 			boot_page_erase(Address);
@@ -87,14 +94,23 @@
 
 			/* Re-enable RWW section */
 			boot_rww_enable();
+
+			return false;
 		}
 
-		static inline void BootloaderAPI_ReadPage(const address_size_t Address, uint8_t* data)
+		static inline bool BootloaderAPI_ReadPage(const address_size_t Address, uint8_t* data)
 		{
+			// Do not read out of bounds TODO FLASHEND
+			if (Address & (SPM_PAGESIZE - 1)) {
+				return true;
+			}
+
 			for(uint8_t i = 0; i < SPM_PAGESIZE; i++){
 				*data = pgm_read_byte_auto(Address + i);
 				data++;
 			}
+
+			return false;
 		}
 
 		static inline void BootloaderAPI_WriteEEPROM(uint8_t* data, void* Address, uint8_t length)

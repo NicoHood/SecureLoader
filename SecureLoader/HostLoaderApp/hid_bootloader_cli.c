@@ -143,7 +143,7 @@ int main(int argc, char **argv)
 	}
 
 	// program the data
-	printf_verbose("Programming");
+	printf_verbose("Programming\r\n");
 	fflush(stdout);
 
 	static uint8_t key[32] = {
@@ -187,10 +187,11 @@ int main(int argc, char **argv)
 		aes256_enc(CK.raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
 	}
 
-	printf_verbose("Changing key!");
-	teensy_write(&CK, sizeof(CK), 6.0);
+	printf_verbose("Changing key!\r\n");
+	r = teensy_write(&CK, sizeof(CK), 6.0);
+	if (!r) die("error writing to Teensy\n");
 
-	printf_verbose("Key Changed!");
+	printf_verbose("Key Changed!\r\n");
 
 	for (addr = 0; addr < code_size; addr += block_size) {
 		printf_verbose("\n%d", addr);
@@ -257,14 +258,41 @@ int main(int argc, char **argv)
 	}
 	printf_verbose("\n");
 
+	printf_verbose("Verify\r\n");
+	for (addr = 0; addr < code_size; addr += block_size) {
+		if (addr > 0 && !ihex_bytes_within_range(addr, addr + block_size - 1)) {
+			// don't waste time on blocks that are unused,
+			// but always do the first one to erase the chip
+			//printf_verbose(" Empty block!");
+			continue;
+		}
+		if(addr >= code_size - 4*1024){
+			//printf_verbose(" Skipping BootLoader Section!");
+			continue;
+		}
+		printf_verbose("%d\r\n", addr);
+
+		//printf_verbose(".");
+		if (code_size < 0x10000) {
+			buf[0] = addr & 255;
+			buf[1] = (addr >> 8) & 255;
+		} else {
+			buf[0] = (addr >> 8) & 255;
+			buf[1] = (addr >> 16) & 255;
+		}
+
+		teensy_write(&addr, sizeof(addr), 0.25);
+		// TODO read
+	}
+
 	// reboot to the user's new code
 	if (reboot_after_programming) {
-		printf_verbose("Booting\n");
+		printf_verbose("Booting\r\n");
 		buf[0] = 0xFF;
 		buf[1] = 0xFF;
 		memset(buf + 2, 0, sizeof(buf) - 2);
-		teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, 0.25);
-		//teensy_write(buf, 2, 0.25);
+		//teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, 0.25);
+		teensy_write(buf, 2, 0.25);
 	}
 	teensy_close();
 	return 0;
