@@ -41,15 +41,6 @@
  */
 static bool RunBootloader = true;
 
-/** Magic lock for forced application start. If the HWBE fuse is programmed and BOOTRST is unprogrammed, the bootloader
- *  will start if the /HWB line of the AVR is held low and the system is reset. However, if the /HWB line is still held
- *  low when the application attempts to start via a watchdog reset, the bootloader will re-start. If set to the value
- *  \ref MAGIC_BOOT_KEY the special init function \ref Application_Jump_Check() will force the application to start.
- */
-uint16_t MagicBootKey ATTR_NO_INIT;
-
-#define sizeof_member(type, member) sizeof(((type *)0)->member)
-
 // Data to programm a flash page that was sent by the host
 typedef union{
 	uint8_t raw[0];
@@ -76,7 +67,7 @@ typedef union{
 	};
 } SetFlashPage_t;
 
-static SetFlashPage_t SetFlashPage = { .PageAddress =0xFFFF };
+static SetFlashPage_t SetFlashPage = { .PageAddress = 0xFFFF };
 
 // Data to read a flash page that was requested by the host
 typedef union{
@@ -127,8 +118,7 @@ typedef union{
 
 static secureBootloaderSection_t SBS;
 
-// TODO rename to write sbs
-static void loadSBS(void)
+static void readSBS(void)
 {
 	// Load PROGMEM data into temporary SBS RAM structure
 	BootloaderAPI_ReadPage(FLASHEND - SPM_PAGESIZE + 1, SBS.raw);
@@ -143,7 +133,7 @@ static void writeSBS(void)
 static void initSBS(void) __attribute__ ((used, naked, section (".init5")));
 static void initSBS(void)
 {
-	loadSBS();
+	readSBS();
 }
 
 // AES256 CBC-MAC context variable
@@ -194,6 +184,9 @@ void Application_Jump_Check(void)
 		// Start application
 		((void (*)(void))0x0000)();
 	}
+
+	// TODO startup delay
+  // TODO disconnect on error
 }
 
 
@@ -284,7 +277,7 @@ void ReadDataInitAES(uint8_t* buf, uint16_t length)
 
 	#else
 	// (Re)load the PROGMEM Bootloader Key inside RAM
-	loadSBS();
+	readSBS();
 
 	// Initialize key schedule inside CTX
 	aes256_init(SBS.BootloaderKey, &(ctx.aesCtx));
@@ -412,7 +405,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 				writeSBS();
 				#endif
 
-				//loadSBS();
+				//readSBS();
 				//hexdump(SBS.raw, sizeof(SBS));
 			}
 			// No valid data length found
