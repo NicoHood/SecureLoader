@@ -43,61 +43,61 @@ static bool RunBootloader = true;
 
 // Data to programm a flash page that was sent by the host
 typedef union{
-	uint8_t raw[0];
-	struct{
-		union{
-			uint16_t PageAddress;
-			uint8_t padding[AES256_CBC_LENGTH];
-		};
-		union{
-			uint16_t PageDataWords[SPM_PAGESIZE/2];
-			uint8_t PageDataBytes[SPM_PAGESIZE];
-		};
-		uint8_t cbcMac[AES256_CBC_LENGTH];
-	};
+  uint8_t raw[0];
+  struct{
+    union{
+      uint16_t PageAddress;
+      uint8_t padding[AES256_CBC_LENGTH];
+    };
+    union{
+      uint16_t PageDataWords[SPM_PAGESIZE/2];
+      uint8_t PageDataBytes[SPM_PAGESIZE];
+    };
+    uint8_t cbcMac[AES256_CBC_LENGTH];
+  };
 } ProgrammFlashPage_t;
 
 static ProgrammFlashPage_t ProgrammFlashPage;
 
 // Set a flash page address, that can be requested by the host afterwards
 typedef union{
-	uint8_t raw[0];
-	struct{
-		uint16_t PageAddress;
-	};
+  uint8_t raw[0];
+  struct{
+    uint16_t PageAddress;
+  };
 } SetFlashPage_t;
 
 static SetFlashPage_t SetFlashPage = { .PageAddress = 0xFFFF };
 
 // Data to read a flash page that was requested by the host
 typedef union{
-	uint8_t raw[0];
-	struct{
-		uint16_t PageAddress;
-		uint16_t PageData[SPM_PAGESIZE/2];
-	};
+  uint8_t raw[0];
+  struct{
+    uint16_t PageAddress;
+    uint16_t PageData[SPM_PAGESIZE/2];
+  };
 } ReadFlashPage_t;
 
 static ReadFlashPage_t ReadFlashPage;
 
 // Data to change the Bootloader Key
 typedef union{
-	uint8_t raw[0];
-	struct{
-		//uint8_t IV[AES256_CBC_LENGTH];
-		uint8_t BootloaderKey[32];
-		uint8_t Mac[AES256_CBC_LENGTH];
-	};
+  uint8_t raw[0];
+  struct{
+    //uint8_t IV[AES256_CBC_LENGTH];
+    uint8_t BootloaderKey[32];
+    uint8_t Mac[AES256_CBC_LENGTH];
+  };
 } changeBootloaderKey_t;
 
 static changeBootloaderKey_t changeBootloaderKey;
 
 // TODO set proper eeprom address space via makefile
 static uint8_t EEMEM BootloaderKeyEEPROM[32] = {
-	0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
-	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
-	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7,
-	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+  0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
+  0x2b,  0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
+  0x1f, 0x35, 0x2c, 0x07, 0x3b,  0x61, 0x08, 0xd7,
+  0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
 };
 
 // Bootloader Key (local ram copy)
@@ -105,35 +105,35 @@ static uint8_t BootloaderKeyRam[32];
 
 // Data to change the Bootloader Key
 typedef union{
-	uint8_t raw[0];
-	uint8_t bytes[SPM_PAGESIZE];
-	uint16_t words[SPM_PAGESIZE/2];
-	struct{
-		uint8_t padding[SPM_PAGESIZE - 2 - 32];
-		uint8_t HardwareButton;
-		uint8_t HardwareButtonPadding;
-		uint8_t BootloaderKey[32];
-	};
+  uint8_t raw[0];
+  uint8_t bytes[SPM_PAGESIZE];
+  uint16_t words[SPM_PAGESIZE/2];
+  struct{
+    uint8_t padding[SPM_PAGESIZE - 2 - 32];
+    uint8_t HardwareButton;
+    uint8_t HardwareButtonPadding;
+    uint8_t BootloaderKey[32];
+  };
 } secureBootloaderSection_t;
 
 static secureBootloaderSection_t SBS;
 
 static void readSBS(void)
 {
-	// Load PROGMEM data into temporary SBS RAM structure
-	BootloaderAPI_ReadPage(FLASHEND - SPM_PAGESIZE + 1, SBS.raw);
+  // Load PROGMEM data into temporary SBS RAM structure
+  BootloaderAPI_ReadPage(FLASHEND - SPM_PAGESIZE + 1, SBS.raw);
 }
 
 static void writeSBS(void)
 {
-	// Write local RAM copy of SBS back to PROGMEM
-	BootloaderAPI_EraseFillWritePage(FLASHEND - SPM_PAGESIZE + 1, SBS.words);
+  // Write local RAM copy of SBS back to PROGMEM
+  BootloaderAPI_EraseFillWritePage(FLASHEND - SPM_PAGESIZE + 1, SBS.words);
 }
 
 static void initSBS(void) __attribute__ ((used, naked, section (".init5")));
 static void initSBS(void)
 {
-	readSBS();
+  readSBS();
 }
 
 // AES256 CBC-MAC context variable
@@ -141,22 +141,22 @@ static aes256CbcMacCtx_t ctx;
 
 //#define USE_EEPROM_KEY
 
-#define PORTID_BUTTON				 PORTE6
+#define PORTID_BUTTON        PORTE6
 #define PORT_BUTTON          PORTE
 #define DDR_BUTTON           DDRE
 #define PIN_BUTTON           PINE
 
 static inline bool JumpToBootloader(void)
 {
-	// TODO check if HW button setting is enabled
-	// TODO or use a timeout?
+  // TODO check if HW button setting is enabled
+  // TODO or use a timeout?
 
-	// Pressing button starts the bootloader
-	DDR_BUTTON &= ~(1 << PORTID_BUTTON);
-	PORT_BUTTON |= (1 << PORTID_BUTTON);
+  // Pressing button starts the bootloader
+  DDR_BUTTON &= ~(1 << PORTID_BUTTON);
+  PORT_BUTTON |= (1 << PORTID_BUTTON);
 
-	// Check if low
-	return !(PIN_BUTTON & (1 << PORTID_BUTTON));
+  // Check if low
+  return !(PIN_BUTTON & (1 << PORTID_BUTTON));
 }
 
 /** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
@@ -165,27 +165,27 @@ static inline bool JumpToBootloader(void)
  */
 void Application_Jump_Check(void)
 {
-	// Turn off the watchdog
+  // Turn off the watchdog
   MCUSR = 0;
   wdt_disable();
 
-	// Don't run the user application if the reset vector is blank (no app loaded)
-	bool ApplicationValid = (pgm_read_word_near(0) != 0xFFFF);
+  // Don't run the user application if the reset vector is blank (no app loaded)
+  bool ApplicationValid = (pgm_read_word_near(0) != 0xFFFF);
 
-	// Start apllication if available and no button was pressed at startup
-	if(ApplicationValid && !JumpToBootloader())
-	{
-		// Clear RAM
-		uint8_t* p;
-		for (p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++) {
-			*p = 0x00;
-		}
+  // Start apllication if available and no button was pressed at startup
+  if(ApplicationValid && !JumpToBootloader())
+  {
+    // Clear RAM
+    uint8_t* p;
+    for (p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++) {
+      *p = 0x00;
+    }
 
-		// Start application
-		((void (*)(void))0x0000)();
-	}
+    // Start application
+    ((void (*)(void))0x0000)();
+  }
 
-	// TODO startup delay
+  // TODO startup delay
   // TODO disconnect on error
 }
 
@@ -195,38 +195,38 @@ void Application_Jump_Check(void)
  */
 int main(void)
 {
-	uart_init();
+  uart_init();
 
-	uart_putchars("Start---------------\r\n");
-	hexdump(SBS.raw, sizeof(SBS));
+  uart_putchars("Start---------------\r\n");
+  hexdump(SBS.raw, sizeof(SBS));
 
 
-	/* Setup hardware required for the bootloader */
-	SetupHardware();
+  /* Setup hardware required for the bootloader */
+  SetupHardware();
 
-	/* Enable global interrupts so that the USB stack can function */
-	GlobalInterruptEnable();
+  /* Enable global interrupts so that the USB stack can function */
+  GlobalInterruptEnable();
 
-	// Process USB data
-	do{
+  // Process USB data
+  do{
 #if !defined(INTERRUPT_CONTROL_ENDPOINT)
-		USB_Device_ProcessControlRequest();
+    USB_Device_ProcessControlRequest();
 #endif
-	} while (RunBootloader);
+  } while (RunBootloader);
 
-	// Disconnect from the host - USB interface will be reset later along with the AVR
-	USB_Detach();
+  // Disconnect from the host - USB interface will be reset later along with the AVR
+  USB_Detach();
 
-	// Enable the watchdog and force a timeout to reset the AVR
-	wdt_enable(WDTO_250MS);
+  // Enable the watchdog and force a timeout to reset the AVR
+  wdt_enable(WDTO_250MS);
 
-	for (;;);
+  for (;;);
 }
 
 #if defined(INTERRUPT_CONTROL_ENDPOINT)
 ISR(USB_COM_vect, ISR_BLOCK)
 {
-	USB_Device_ProcessControlRequest();
+  USB_Device_ProcessControlRequest();
 }
 #endif
 
@@ -234,54 +234,54 @@ ISR(USB_COM_vect, ISR_BLOCK)
 static void SetupHardware(void)
 {
 #if F_CPU != F_USB
-	/* Disable clock division */
-	clock_prescale_set(clock_div_1);
+  /* Disable clock division */
+  clock_prescale_set(clock_div_1);
 #endif
 
-	/* Relocate the interrupt vector table to the bootloader section */
-	MCUCR = (1 << IVCE);
-	MCUCR = (1 << IVSEL);
+  /* Relocate the interrupt vector table to the bootloader section */
+  MCUCR = (1 << IVCE);
+  MCUCR = (1 << IVSEL);
 
-	/* Initialize USB subsystem */
-	USB_Init();
+  /* Initialize USB subsystem */
+  USB_Init();
 }
 
 void ReadDataInitAES(uint8_t* buf, uint16_t length)
 {
-	// Acknowledge setup data
-	Endpoint_ClearSETUP();
+  // Acknowledge setup data
+  Endpoint_ClearSETUP();
 
-	// Store the data in the temporary buffer
-	for (size_t i = 0; i < length; i++)
-	{
-		// Check if endpoint is empty - if so clear it and wait until ready for next packet
-		if (!(Endpoint_BytesInEndpoint()))
-		{
-			Endpoint_ClearOUT();
-			while (!(Endpoint_IsOUTReceived()));
-		}
+  // Store the data in the temporary buffer
+  for (size_t i = 0; i < length; i++)
+  {
+    // Check if endpoint is empty - if so clear it and wait until ready for next packet
+    if (!(Endpoint_BytesInEndpoint()))
+    {
+      Endpoint_ClearOUT();
+      while (!(Endpoint_IsOUTReceived()));
+    }
 
-		// Get next data byte
-		buf[i] = Endpoint_Read_8();
-	}
+    // Get next data byte
+    buf[i] = Endpoint_Read_8();
+  }
 
-	// Acknowledge reading to the host
-	Endpoint_ClearOUT();
+  // Acknowledge reading to the host
+  Endpoint_ClearOUT();
 
-	#ifdef USE_EEPROM_KEY
-	// (Re)load the EEPROM Bootloader Key inside RAM TODO move? reimplement with 8 bit
-	eeprom_read_block((void*)BootloaderKeyRam, (const void*)BootloaderKeyEEPROM, sizeof(BootloaderKeyRam));
+  #ifdef USE_EEPROM_KEY
+  // (Re)load the EEPROM Bootloader Key inside RAM TODO move? reimplement with 8 bit
+  eeprom_read_block((void*)BootloaderKeyRam, (const void*)BootloaderKeyEEPROM, sizeof(BootloaderKeyRam));
 
-	// Initialize key schedule inside CTX
-	aes256_init(BootloaderKeyRam, &(ctx.aesCtx));
+  // Initialize key schedule inside CTX
+  aes256_init(BootloaderKeyRam, &(ctx.aesCtx));
 
-	#else
-	// (Re)load the PROGMEM Bootloader Key inside RAM
-	readSBS();
+  #else
+  // (Re)load the PROGMEM Bootloader Key inside RAM
+  readSBS();
 
-	// Initialize key schedule inside CTX
-	aes256_init(SBS.BootloaderKey, &(ctx.aesCtx));
-	#endif
+  // Initialize key schedule inside CTX
+  aes256_init(SBS.BootloaderKey, &(ctx.aesCtx));
+  #endif
 }
 
 
@@ -291,164 +291,164 @@ void ReadDataInitAES(uint8_t* buf, uint16_t length)
  */
 static inline void EVENT_USB_Device_ControlRequest(void)
 {
-	// Get input data length
-	uint16_t length = USB_ControlRequest.wLength;
+  // Get input data length
+  uint16_t length = USB_ControlRequest.wLength;
 
-	/* Process HID specific control requests */
-	switch (USB_ControlRequest.bRequest)
-	{
-		// Do not differentiate between Out or Feature report (in and reserved are ignored too)
-		case HID_REQ_SetReport:
-		{
-			// Process SetFlashPage command
-			if(length == sizeof(SetFlashPage))
-			{
-				// Read in data
-				ReadDataInitAES(SetFlashPage.raw, sizeof(SetFlashPage));
+  /* Process HID specific control requests */
+  switch (USB_ControlRequest.bRequest)
+  {
+    // Do not differentiate between Out or Feature report (in and reserved are ignored too)
+    case HID_REQ_SetReport:
+    {
+      // Process SetFlashPage command
+      if(length == sizeof(SetFlashPage))
+      {
+        // Read in data
+        ReadDataInitAES(SetFlashPage.raw, sizeof(SetFlashPage));
 
-				// Check if the command is a program page command, or a start application command.
-				// Do not validate PageAddress, we do this in the GetReport request.
-				if (SetFlashPage.PageAddress == COMMAND_STARTAPPLICATION) {
-					RunBootloader = false;
-				}
-			}
-			// Process ProgrammFlashPage command
-			else if(length == sizeof(ProgrammFlashPage))
-			{
-				ReadDataInitAES(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
+        // Check if the command is a program page command, or a start application command.
+        // Do not validate PageAddress, we do this in the GetReport request.
+        if (SetFlashPage.PageAddress == COMMAND_STARTAPPLICATION) {
+          RunBootloader = false;
+        }
+      }
+      // Process ProgrammFlashPage command
+      else if(length == sizeof(ProgrammFlashPage))
+      {
+        ReadDataInitAES(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
 
-				// Do not overwrite the bootloader or write out of bounds
-				address_size_t PageAddress = getPageAddress(ProgrammFlashPage.PageAddress);
-				if ((PageAddress >= BOOT_START_ADDR) || (PageAddress & (SPM_PAGESIZE - 1)))
-				{
-					Endpoint_StallTransaction();
-					return;
-				}
+        // Do not overwrite the bootloader or write out of bounds
+        address_size_t PageAddress = getPageAddress(ProgrammFlashPage.PageAddress);
+        if ((PageAddress >= BOOT_START_ADDR) || (PageAddress & (SPM_PAGESIZE - 1)))
+        {
+          Endpoint_StallTransaction();
+          return;
+        }
 
-				// Loop will update cbcMac for each block
-				uint16_t dataLen = sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac);
-			  for (uint16_t i=0; i<dataLen; i+=AES256_CBC_LENGTH)
-			  {
-			    // Decrypt next block
-			    aes256_dec(ProgrammFlashPage.cbcMac, &(ctx.aesCtx));
+        // Loop will update cbcMac for each block
+        uint16_t dataLen = sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac);
+        for (uint16_t i=0; i<dataLen; i+=AES256_CBC_LENGTH)
+        {
+          // Decrypt next block
+          aes256_dec(ProgrammFlashPage.cbcMac, &(ctx.aesCtx));
 
-			    // XOR cbcMac with data
-			    aesXorVectors(ProgrammFlashPage.cbcMac, ProgrammFlashPage.raw + dataLen - i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
-			  }
+          // XOR cbcMac with data
+          aesXorVectors(ProgrammFlashPage.cbcMac, ProgrammFlashPage.raw + dataLen - i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+        }
 
-				// Check if CBC-MAC matches
-				for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
-					// TODO for security reasons the padding should also be checked if zero?
-					// TODO Move the cbc mac at the beginning to check them together
-					if(ProgrammFlashPage.cbcMac[i] != 0x00){
-						Endpoint_StallTransaction();
-						return;
-					}
-				}
+        // Check if CBC-MAC matches
+        for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+          // TODO for security reasons the padding should also be checked if zero?
+          // TODO Move the cbc mac at the beginning to check them together
+          if(ProgrammFlashPage.cbcMac[i] != 0x00){
+            Endpoint_StallTransaction();
+            return;
+          }
+        }
 
-				// Programm flash page
-				BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage.PageDataWords);
-			}
-			// Process changeBootloaderKeyRam command
-			else if(length == sizeof(changeBootloaderKey))
-			{
-				ReadDataInitAES(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
+        // Programm flash page
+        BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage.PageDataWords);
+      }
+      // Process changeBootloaderKeyRam command
+      else if(length == sizeof(changeBootloaderKey))
+      {
+        ReadDataInitAES(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
 
-				// Decrypt all blocks
-				// TODO use CBC
-				for(uint8_t i = 0; i < (sizeof(changeBootloaderKey) / AES256_CBC_LENGTH); i++){
-			    aes256_dec(changeBootloaderKey.raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
-				}
+        // Decrypt all blocks
+        // TODO use CBC
+        for(uint8_t i = 0; i < (sizeof(changeBootloaderKey) / AES256_CBC_LENGTH); i++){
+          aes256_dec(changeBootloaderKey.raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
+        }
 
-				// TODO prev 3670
+        // TODO prev 3670
 
-				// // Loop will update cbcMac for each block
-				// // TODO check/set IV -> dont use usb buffer, use special static structs
-				// uint16_t dataLen = sizeof(changeBootloaderKey_t);
-			  // for (uint16_t i = dataLen - AES256_CBC_LENGTH; i > 0; i -= AES256_CBC_LENGTH)
-			  // {
-			  //   // Decrypt next block
-			  //   aes256_dec(changeBootloaderKey->raw + i, &(ctx.aesCtx));
-				//
-			  //   // XOR data with previous block
-				// 	aesXorVectors(ProgrammFlashPage->raw + i, ProgrammFlashPage->raw + i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
-			  // }
-				//
-				// // Check if CBC-MAC matches
-				// for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
-				// 	// TODO for security reasons the padding should also be checked if zero?
-				// 	// TODO Move the cbc mac at the beginning to check them together
-				// 	if(ProgrammFlashPage->cbcMac[i] != 0x00){
-				// 		Endpoint_StallTransaction();
-				// 		return;
-				// 	}
-				// }
+        // // Loop will update cbcMac for each block
+        // // TODO check/set IV -> dont use usb buffer, use special static structs
+        // uint16_t dataLen = sizeof(changeBootloaderKey_t);
+        // for (uint16_t i = dataLen - AES256_CBC_LENGTH; i > 0; i -= AES256_CBC_LENGTH)
+        // {
+        //   // Decrypt next block
+        //   aes256_dec(changeBootloaderKey->raw + i, &(ctx.aesCtx));
+        //
+        //   // XOR data with previous block
+        //   aesXorVectors(ProgrammFlashPage->raw + i, ProgrammFlashPage->raw + i - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+        // }
+        //
+        // // Check if CBC-MAC matches
+        // for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+        //   // TODO for security reasons the padding should also be checked if zero?
+        //   // TODO Move the cbc mac at the beginning to check them together
+        //   if(ProgrammFlashPage->cbcMac[i] != 0x00){
+        //     Endpoint_StallTransaction();
+        //     return;
+        //   }
+        // }
 
-				// Check if MAC matches (0-15)
-				for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
-					if(changeBootloaderKey.Mac[i] != i){
-						Endpoint_StallTransaction();
-						return;
-					}
-				}
+        // Check if MAC matches (0-15)
+        for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+          if(changeBootloaderKey.Mac[i] != i){
+            Endpoint_StallTransaction();
+            return;
+          }
+        }
 
-				//uart_putchars("key\r\n");
+        //uart_putchars("key\r\n");
 
-				#ifdef USE_EEPROM_KEY
-				// Write new BootloaderKey to EEPROM
-				// TODO use write, as a BK change is only available for authorized people
-				BootloaderAPI_UpdateEEPROM(changeBootloaderKey.raw, &BootloaderKeyEEPROM, sizeof(BootloaderKeyEEPROM));
+        #ifdef USE_EEPROM_KEY
+        // Write new BootloaderKey to EEPROM
+        // TODO use write, as a BK change is only available for authorized people
+        BootloaderAPI_UpdateEEPROM(changeBootloaderKey.raw, &BootloaderKeyEEPROM, sizeof(BootloaderKeyEEPROM));
 
-				#else
-				// Write new BootloaderKey to PROGMEM (SBS)
-				memcpy(SBS.BootloaderKey, changeBootloaderKey.BootloaderKey, sizeof(SBS.BootloaderKey));
-				writeSBS();
-				#endif
+        #else
+        // Write new BootloaderKey to PROGMEM (SBS)
+        memcpy(SBS.BootloaderKey, changeBootloaderKey.BootloaderKey, sizeof(SBS.BootloaderKey));
+        writeSBS();
+        #endif
 
-				//readSBS();
-				//hexdump(SBS.raw, sizeof(SBS));
-			}
-			// No valid data length found
-			else{
-				Endpoint_StallTransaction();
-				return;
-			}
+        //readSBS();
+        //hexdump(SBS.raw, sizeof(SBS));
+      }
+      // No valid data length found
+      else{
+        Endpoint_StallTransaction();
+        return;
+      }
 
-			// Acknowledge SetReport request
-			Endpoint_ClearStatusStageHostToDevice();
-			break;
-		}
+      // Acknowledge SetReport request
+      Endpoint_ClearStatusStageHostToDevice();
+      break;
+    }
 
-		case HID_REQ_GetReport:
-		{
-			// Only response to feature request that request a flash page.
-			// Set the page address first via SetReport.
-			if((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature
-			   || length >= sizeof(ReadFlashPage))
-			{
-				// Acknowledge setup data
-				Endpoint_ClearSETUP();
+    case HID_REQ_GetReport:
+    {
+      // Only response to feature request that request a flash page.
+      // Set the page address first via SetReport.
+      if((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature
+         || length >= sizeof(ReadFlashPage))
+      {
+        // Acknowledge setup data
+        Endpoint_ClearSETUP();
 
-				// Read the source address
-				address_size_t PageAddress = getPageAddress(SetFlashPage.PageAddress);
+        // Read the source address
+        address_size_t PageAddress = getPageAddress(SetFlashPage.PageAddress);
 
-				// Do not overwrite the bootloader or write out of bounds
-				if ((PageAddress >= BOOT_START_ADDR) || (PageAddress & (SPM_PAGESIZE - 1)))
-				{
-					Endpoint_StallTransaction();
-					return;
-				}
+        // Do not overwrite the bootloader or write out of bounds
+        if ((PageAddress >= BOOT_START_ADDR) || (PageAddress & (SPM_PAGESIZE - 1)))
+        {
+          Endpoint_StallTransaction();
+          return;
+        }
 
-				// Read flash page into temporary buffer
-				BootloaderAPI_ReadPage(SetFlashPage.PageAddress, ReadFlashPage.raw);
+        // Read flash page into temporary buffer
+        BootloaderAPI_ReadPage(SetFlashPage.PageAddress, ReadFlashPage.raw);
 
-				// Write the page data to the PC
-				Endpoint_Write_Control_Stream_LE(ReadFlashPage.raw, sizeof(ReadFlashPage_t));
+        // Write the page data to the PC
+        Endpoint_Write_Control_Stream_LE(ReadFlashPage.raw, sizeof(ReadFlashPage_t));
 
-				// Acknowledge GetReport request
-				Endpoint_ClearStatusStageDeviceToHost();
-			}
-			break;
-		}
-	}
+        // Acknowledge GetReport request
+        Endpoint_ClearStatusStageDeviceToHost();
+      }
+      break;
+    }
+  }
 }
