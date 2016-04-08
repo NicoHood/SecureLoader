@@ -42,14 +42,18 @@
 static bool RunBootloader = true;
 
 // Data to programm a flash page that was sent by the host
-typedef union{
+typedef union
+{
     uint8_t raw[0];
-    struct{
-        union{
+    struct
+    {
+        union
+        {
             uint16_t PageAddress;
             uint8_t padding[AES256_CBC_LENGTH];
         };
-        union{
+        union
+        {
             uint16_t PageDataWords[SPM_PAGESIZE/2];
             uint8_t PageDataBytes[SPM_PAGESIZE];
         };
@@ -60,9 +64,11 @@ typedef union{
 static ProgrammFlashPage_t ProgrammFlashPage;
 
 // Set a flash page address, that can be requested by the host afterwards
-typedef union{
+typedef union
+{
     uint8_t raw[0];
-    struct{
+    struct
+    {
         uint16_t PageAddress;
     };
 } SetFlashPage_t;
@@ -70,9 +76,11 @@ typedef union{
 static SetFlashPage_t SetFlashPage = { .PageAddress = 0xFFFF };
 
 // Data to read a flash page that was requested by the host
-typedef union{
+typedef union
+{
     uint8_t raw[0];
-    struct{
+    struct
+    {
         uint16_t PageAddress;
         uint16_t PageData[SPM_PAGESIZE/2];
     };
@@ -81,9 +89,11 @@ typedef union{
 static ReadFlashPage_t ReadFlashPage;
 
 // Data to change the Bootloader Key
-typedef union{
+typedef union
+{
     uint8_t raw[0];
-    struct{
+    struct
+    {
         //uint8_t IV[AES256_CBC_LENGTH];
         uint8_t BootloaderKey[32];
         uint8_t Mac[AES256_CBC_LENGTH];
@@ -93,7 +103,8 @@ typedef union{
 static changeBootloaderKey_t changeBootloaderKey;
 
 // TODO set proper eeprom address space via makefile
-static uint8_t EEMEM BootloaderKeyEEPROM[32] = {
+static uint8_t EEMEM BootloaderKeyEEPROM[32] =
+{
     0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
     0x2b,    0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
     0x1f, 0x35, 0x2c, 0x07, 0x3b,    0x61, 0x08, 0xd7,
@@ -104,11 +115,13 @@ static uint8_t EEMEM BootloaderKeyEEPROM[32] = {
 static uint8_t BootloaderKeyRam[32];
 
 // Data to change the Bootloader Key
-typedef union{
+typedef union
+{
     uint8_t raw[0];
     uint8_t bytes[SPM_PAGESIZE];
     uint16_t words[SPM_PAGESIZE/2];
-    struct{
+    struct
+    {
         uint8_t padding[SPM_PAGESIZE - 2 - 32];
         uint8_t HardwareButton;
         uint8_t HardwareButtonPadding;
@@ -173,11 +186,12 @@ void Application_Jump_Check(void)
     bool ApplicationValid = (pgm_read_word_near(0) != 0xFFFF);
 
     // Start apllication if available and no button was pressed at startup
-    if(ApplicationValid && !JumpToBootloader())
+    if (ApplicationValid && !JumpToBootloader())
     {
         // Clear RAM
         uint8_t* p;
-        for (p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++) {
+        for (p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++)
+        {
             *p = 0x00;
         }
 
@@ -246,7 +260,8 @@ static void SetupHardware(void)
     USB_Init();
 }
 
-static void initAES(void){
+static void initAES(void)
+{
     #ifdef USE_EEPROM_KEY
     // (Re)load the EEPROM Bootloader Key inside RAM TODO move? reimplement with 8 bit
     eeprom_read_block((void*)BootloaderKeyRam, (const void*)BootloaderKeyEEPROM, sizeof(BootloaderKeyRam));
@@ -288,19 +303,20 @@ static inline void EVENT_USB_Device_ControlRequest(void)
         case HID_REQ_SetReport:
         {
             // Process SetFlashPage command
-            if(length == sizeof(SetFlashPage))
+            if (length == sizeof(SetFlashPage))
             {
                 // Read in data
                 ReadUSBData(SetFlashPage.raw, sizeof(SetFlashPage));
 
                 // Check if the command is a program page command, or a start application command.
                 // Do not validate PageAddress, we do this in the GetReport request.
-                if (SetFlashPage.PageAddress == COMMAND_STARTAPPLICATION) {
+                if (SetFlashPage.PageAddress == COMMAND_STARTAPPLICATION)
+                {
                     RunBootloader = false;
                 }
             }
             // Process ProgrammFlashPage command
-            else if(length == sizeof(ProgrammFlashPage))
+            else if (length == sizeof(ProgrammFlashPage))
             {
                 ReadUSBData(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
 
@@ -326,10 +342,12 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 }
 
                 // Check if CBC-MAC matches
-                for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
+                for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++)
+                {
                     // TODO for security reasons the padding should also be checked if zero?
                     // TODO Move the cbc mac at the beginning to check them together
-                    if(ProgrammFlashPage.cbcMac[i] != 0x00){
+                    if (ProgrammFlashPage.cbcMac[i] != 0x00)
+                    {
                         Endpoint_StallTransaction();
                         return;
                     }
@@ -339,14 +357,15 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 BootloaderAPI_EraseFillWritePage(PageAddress, ProgrammFlashPage.PageDataWords);
             }
             // Process changeBootloaderKeyRam command
-            else if(length == sizeof(changeBootloaderKey))
+            else if (length == sizeof(changeBootloaderKey))
             {
                 ReadUSBData(changeBootloaderKey.raw, sizeof(changeBootloaderKey));
                 initAES();
 
                 // Decrypt all blocks
                 // TODO use CBC
-                for(uint8_t i = 0; i < (sizeof(changeBootloaderKey) / AES256_CBC_LENGTH); i++){
+                for (uint8_t i = 0; i < (sizeof(changeBootloaderKey) / AES256_CBC_LENGTH); i++)
+                {
                     aes256_dec(changeBootloaderKey.raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
                 }
 
@@ -368,15 +387,17 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 // for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
                 //     // TODO for security reasons the padding should also be checked if zero?
                 //     // TODO Move the cbc mac at the beginning to check them together
-                //     if(ProgrammFlashPage->cbcMac[i] != 0x00){
+                //     if (ProgrammFlashPage->cbcMac[i] != 0x00){
                 //         Endpoint_StallTransaction();
                 //         return;
                 //     }
                 // }
 
                 // Check if MAC matches (0-15)
-                for(uint8_t i = 0; i < AES256_CBC_LENGTH; i++){
-                    if(changeBootloaderKey.Mac[i] != i){
+                for (uint8_t i = 0; i < AES256_CBC_LENGTH; i++)
+                {
+                    if (changeBootloaderKey.Mac[i] != i)
+                    {
                         Endpoint_StallTransaction();
                         return;
                     }
@@ -399,7 +420,8 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 //hexdump(SBS.raw, sizeof(SBS));
             }
             // No valid data length found
-            else{
+            else
+            {
                 Endpoint_StallTransaction();
                 return;
             }
@@ -413,7 +435,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
         {
             // Only response to feature request that request a flash page.
             // Set the page address first via SetReport.
-            if((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature
+            if ((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature
                  || length >= sizeof(ReadFlashPage))
             {
                 // Acknowledge setup data
