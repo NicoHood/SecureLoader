@@ -617,7 +617,7 @@
 	 		 	 */
 				static inline void Endpoint_Write_Control_Stream_LE(const void* const Buffer,
 																								 uint16_t Length) ATTR_NON_NULL_PTR_ARG(1);
-			  static inline void Endpoint_Write_Control_Stream_LE (const void* const Buffer, uint16_t Length)
+			  static inline void Endpoint_Write_Control_Stream_LE(const void* const Buffer, uint16_t Length)
 				{
 					uint8_t* DataStream     = ((uint8_t*)Buffer);
 
@@ -651,6 +651,28 @@
 				    Endpoint_ClearIN();
 				  }
 				  while (Length);
+				}
+
+				static inline void Endpoint_Read_Control_Stream_LE(const void* const Buffer,
+																								 uint16_t Length) ATTR_NON_NULL_PTR_ARG(1);
+				static inline void Endpoint_Read_Control_Stream_LE(const void* const Buffer, uint16_t Length)
+				{
+				  // Store the data in the temporary buffer
+				  for (size_t i = 0; i < Length; i++)
+				  {
+				    // Check if endpoint is empty - if so clear it and wait until ready for next packet
+				    if (!(Endpoint_BytesInEndpoint()))
+				    {
+				      Endpoint_ClearOUT();
+				      while (!(Endpoint_IsOUTReceived()));
+				    }
+
+				    // Get next data byte
+				    ((uint8_t*)Buffer)[i] = Endpoint_Read_8();
+				  }
+
+				  // Acknowledge reading to the host
+				  Endpoint_ClearOUT();
 				}
 
 	/* Disable C linkage for C++ Compilers: */
