@@ -40,7 +40,11 @@ typedef struct {
 } aes256_context;
 
 #if !defined(BACK_TO_TABLES) && defined(STARTUP_TABLES)
+#if defined(__AVR__)
 void aes256_init_sboxes(void) __attribute__ ((used, naked, section (".init5")));
+#else
+#error "This option is not available on non AVR platforms."
+#endif
 #endif
 
 void aes256_init_ecb(aes256_context *, uint8_t * /* key */);
