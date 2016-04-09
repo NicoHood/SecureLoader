@@ -41,17 +41,23 @@ static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbyt
 
 void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
 {
+    // Check if dataLen is a multiple of AES256_CBC_LENGTH
+    if (dataLen % AES256_CBC_LENGTH != 0)
+    {
+        return;
+    }
+
     // Encrypt the data
     for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
-        // Start from the beginning to XOR next data
-        uint8_t* pos = data + i;
-
         // XOR plaintext with previous data (assuming the IV is prepended!)
-        aesXorVectors(pos, pos - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+        aesXorVectors(data, data - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
 
         // Encrypt next block
-        aes256_enc(pos, ctx);
+        aes256_enc(data, ctx);
+
+        // Get next block
+        data += AES256_CBC_LENGTH;
     }
 }
 
@@ -60,19 +66,28 @@ void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
 // TODO assumed the IV is set to zero
 // Does not touch the IV!
 // dataLen excludes the IV
-void aes256CbcDecrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
+void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, uint16_t dataLen)
 {
+    // Check if dataLen is a multiple of AES256_CBC_LENGTH
+    if (dataLen % AES256_CBC_LENGTH != 0)
+    {
+        return;
+    }
+
+    // Start from the end to not overwrite previous data (skip IV)
+    data += dataLen;
+
     // Decrypt the data
     for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
-        // Start from the end to not overwrite previous data
-        uint8_t* pos = data + dataLen - i;
-
         // Decrypt next block
-        aes256_dec(pos, ctx);
+        aes256_dec(data, ctx);
 
         // XOR cbcMac with previous data (assuming the IV is prepended!)
-        aesXorVectors(pos, pos - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+        aesXorVectors(data, data - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
+
+        // Get next block
+        data -= AES256_CBC_LENGTH;
     }
 }
 
