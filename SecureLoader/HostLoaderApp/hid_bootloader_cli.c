@@ -160,35 +160,67 @@ int main(int argc, char **argv)
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	};
 
-	// Data to change the Bootloader Key
-	typedef union{
-		uint8_t raw[0];
-		struct{
-			uint8_t BootloaderKey[32];
-			uint8_t Mac[AES256_CBC_LENGTH];
-		};
-	} changeBootloaderKey_t;
+	// Data package from the PC to change the Bootloader Key
+	typedef union
+	{
+	    uint8_t raw[0];
+	    struct
+	    {
+	        uint8_t BootloaderKey[32];
+	        uint8_t cbcMac[AES256_CBC_LENGTH];
+	    };
+	} data_t;
 
-	changeBootloaderKey_t CK;
-	memcpy(&CK, key2, sizeof(key2));
+	// Data to simpler calculate the new Bootloader Key, IV prepended
+	typedef union
+	{
+	    uint8_t raw[0];
+	    struct
+	    {
+	        uint8_t IV[AES256_CBC_LENGTH];
 
-	for(int i = 0; i< AES256_CBC_LENGTH; i++){
-		CK.Mac[i] = i;
-	}
+	        // Data package from the PC to change the Bootloader Key
+	        union
+	        {
+	            uint8_t raw[0];
+	            struct
+	            {
+	                uint8_t BootloaderKey[32];
+	                uint8_t cbcMac[AES256_CBC_LENGTH];
+	            };
+	        } data;
+	    };
+	} newBootloaderKey_t;
+
+	newBootloaderKey_t newBootloaderKey;
+
+	// Get the data ready
+	memset(newBootloaderKey.IV, 0x00, sizeof(newBootloaderKey.IV));
+	memcpy(newBootloaderKey.data.BootloaderKey, key2, sizeof(newBootloaderKey.data.BootloaderKey));
 
 	// Declare aes256 context variable
-	static aes256CbcMacCtx_t ctx;
+	static aes256_ctx_t ctx;
 
 	// Calculate and save CBC-MAC
-	aes256CbcMacInit(&ctx, key);
+	aes256_init(key, &ctx);
+
+	// Encrypt the data
+	uint16_t dataLen = sizeof(newBootloaderKey.data.BootloaderKey);
+	aes256CbcEncrypt(&ctx, newBootloaderKey.data.BootloaderKey, dataLen);
+
+	// Calculate and save CBC-MAC
+	aes256CbcMacCalculate(&ctx, newBootloaderKey.data.raw, sizeof(newBootloaderKey.data.BootloaderKey));
+
+	hexdump(newBootloaderKey.data.raw, sizeof(newBootloaderKey.data));
+
 
 	// Encrypt all blocks (with old key)
-	for(uint8_t i = 0; i < (sizeof(changeBootloaderKey_t) / AES256_CBC_LENGTH); i++){
-		aes256_enc(CK.raw + (i * AES256_CBC_LENGTH), &(ctx.aesCtx));
-	}
+	// for(uint8_t i = 0; i < (sizeof(data_t) / AES256_CBC_LENGTH); i++){
+	// 	aes256_enc(newBootloaderKey.data.raw + (i * AES256_CBC_LENGTH), &ctx);
+	// }
 
 	printf_verbose("Changing key!\r\n");
-	r = teensy_write(&CK, sizeof(CK), 6.0);
+	r = teensy_write(&newBootloaderKey.data, sizeof(newBootloaderKey.data), 6.0);
 	if (!r) die("error writing to Teensy\n");
 
 	printf_verbose("Key Changed!\r\n");
@@ -244,11 +276,10 @@ int main(int argc, char **argv)
 		ihex_get_data(addr, sizeof(ProgrammFlashPage.PageDataBytes), ProgrammFlashPage.PageDataBytes);
 
 		// Save key and initialization vector inside context
-		aes256CbcMacInit(&ctx, key2); // TODO key2
+		aes256_init(key2, &ctx);
 
 		// Calculate and save CBC-MAC
-		aes256CbcMacUpdate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));
-		memcpy(ProgrammFlashPage.cbcMac, ctx.cbcMac, sizeof(ProgrammFlashPage.cbcMac));
+		aes256CbcMacCalculate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));
 
 		// Write data to the board
 		//hexdump(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
@@ -1149,6 +1180,9 @@ void hexdump(uint8_t * data, size_t len)
 	size_t i;
 	for (i = 0; i < len; i++) {
 		printf_verbose("0x%02X\t", data[i]);
+		if(i%16==15){
+			printf_verbose("\n");
+		}
 	}
 	printf_verbose("\n");
 }
