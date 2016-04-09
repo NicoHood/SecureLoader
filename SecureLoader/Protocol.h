@@ -8,6 +8,11 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#if defined(__AVR__)
+#include <avr/io.h>
+#elif !defined(SPM_PAGESIZE)
+#error Please define SPM_PAGESIZE before you include this file!
+#endif
 
 // Data to programm a flash page that was sent by the host
 typedef union

@@ -39,6 +39,8 @@
 #include <string.h>
 #include <unistd.h>
 #include "../AES/aes256.h"
+#define SPM_PAGESIZE 128
+#include "../Protocol.h"
 
 void usage(void)
 {
@@ -151,27 +153,6 @@ int main(int argc, char **argv)
 	printf_verbose("Programming\r\n");
 	fflush(stdout);
 
-	// Data to simpler calculate the new Bootloader Key, IV prepended
-	typedef union
-	{
-	    uint8_t raw[0];
-	    struct
-	    {
-	        uint8_t IV[AES256_CBC_LENGTH];
-
-	        // Data package from the PC to change the Bootloader Key
-	        union
-	        {
-	            uint8_t raw[0];
-	            struct
-	            {
-	                uint8_t BootloaderKey[32];
-	                uint8_t cbcMac[AES256_CBC_LENGTH];
-	            };
-	        } data;
-	    };
-	} newBootloaderKey_t;
-
 	newBootloaderKey_t newBootloaderKey;
 
 	// Get the data ready
@@ -193,11 +174,6 @@ int main(int argc, char **argv)
 
 	hexdump(newBootloaderKey.data.raw, sizeof(newBootloaderKey.data));
 
-
-	// Encrypt all blocks (with old key)
-	// for(uint8_t i = 0; i < (sizeof(data_t) / AES256_CBC_LENGTH); i++){
-	// 	aes256_enc(newBootloaderKey.data.raw + (i * AES256_CBC_LENGTH), &ctx);
-	// }
 
 	printf_verbose("Changing key!\r\n");
 	r = teensy_write(&newBootloaderKey.data, sizeof(newBootloaderKey.data), 6.0);
@@ -226,22 +202,6 @@ int main(int argc, char **argv)
 			buf[0] = (addr >> 8) & 255;
 			buf[1] = (addr >> 16) & 255;
 		}
-
-		#define SPM_PAGESIZE block_size
-		typedef union{
-			uint8_t raw[0];
-			struct{
-				union{
-					uint16_t PageAddress;
-					uint8_t padding[AES256_CBC_LENGTH];
-				};
-				union{
-					uint16_t PageDataWords[SPM_PAGESIZE/2];
-					uint8_t PageDataBytes[SPM_PAGESIZE];
-				};
-				uint8_t cbcMac[AES256_CBC_LENGTH];
-			};
-		} ProgrammFlashPage_t;
 
 		// Create a new flash page data structure
 		ProgrammFlashPage_t ProgrammFlashPage;
@@ -295,21 +255,6 @@ int main(int argc, char **argv)
 		// Request page
 		r = teensy_write(buf, 2, 0.25);
 		if (!r) die("error writing to Teensy\n");
-
-		// Data to read a flash page that was requested by the host
-		typedef union
-		{
-		    uint8_t raw[0];
-		    struct
-		    {
-		        uint16_t PageAddress;
-		        union
-		        {
-		            uint16_t PageDataWords[SPM_PAGESIZE/2];
-		            uint8_t PageDataBytes[SPM_PAGESIZE];
-		        };
-		    };
-		} ReadFlashPage_t;
 
 		// Get data
 		ReadFlashPage_t verifybuf;
