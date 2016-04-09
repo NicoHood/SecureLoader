@@ -28,109 +28,75 @@
   this software.
 */
 
-/** \file
- *
- *  Header file for BootloaderAPI.c.
- */
-
 #ifndef _BOOTLOADER_API_H_
 #define _BOOTLOADER_API_H_
 
-	/* Includes: */
-		#include <avr/io.h>
-		#include <avr/boot.h>
-		#include <avr/pgmspace.h>
-		#include <stdbool.h>
+    /* Includes: */
+        #include <avr/io.h>
+        #include <avr/boot.h>
+        #include <avr/pgmspace.h>
+        #include <stdbool.h>
 
-		//#include <LUFA/Common/Common.h>
+    /* Enable C linkage for C++ Compilers: */
+        #if defined(__cplusplus)
+            extern "C" {
+        #endif
 
-		#if (FLASHEND > USHRT_MAX)
-			typedef uint32_t address_size_t;
-			#define pgm_read_byte_auto(address) pgm_read_byte_far(address)
-			#define getPageAddress(address) ((uint32_t)address << 8)
-		#else
-			typedef uint16_t address_size_t;
-			#define pgm_read_byte_auto(address) pgm_read_byte_near(address)
-			#define getPageAddress(address) (address)
-		#endif
+    /* Macros: */
+        #if (FLASHEND > USHRT_MAX)
+            typedef uint32_t address_size_t;
+            #define pgm_read_byte_auto(address) pgm_read_byte_far(address)
+            #define getPageAddress(address) ((uint32_t)address << 8)
+        #else
+            typedef uint16_t address_size_t;
+            #define pgm_read_byte_auto(address) pgm_read_byte_near(address)
+            #define getPageAddress(address) (address)
+        #endif
 
-	/* Function Prototypes: */
-		void BootloaderAPI_Test(const address_size_t Address, const uint16_t* Words) __attribute__ ((used, section (".apitable_functions")));
-		void    BootloaderAPI_ErasePage(const address_size_t Address);
-		void    BootloaderAPI_WritePage(const address_size_t Address);
-		void    BootloaderAPI_FillWord(const address_size_t Address, const uint16_t Word);
-		static inline bool    BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words);
-		uint8_t BootloaderAPI_ReadSignature(const uint16_t Address);
-		uint8_t BootloaderAPI_ReadFuse(const uint16_t Address);
-		uint8_t BootloaderAPI_ReadLock(void);
-		void    BootloaderAPI_WriteLock(const uint8_t LockBits);
+    /* Function Prototypes: */
+        bool BootloaderAPI_EraseFillWritePage(const address_size_t address, const uint16_t* words) __attribute__ ((used, section (".apitable_functions")));
+        uint8_t BootloaderAPI_ReadByte(const address_size_t address) __attribute__ ((used, section (".apitable_functions")));
+        static inline bool BootloaderAPI_ReadPage(const address_size_t Address, uint8_t* data);
+        static inline void BootloaderAPI_WriteEEPROM(uint8_t* data, void* Address, uint8_t length);
+        static inline void BootloaderAPI_UpdateEEPROM(uint8_t* data, void* Address, uint8_t length);
 
-		static inline bool BootloaderAPI_EraseFillWritePage(const address_size_t Address, const uint16_t* Words)
-		{
-			// TODO only write data if its new, to preserv flash destruction on replay attacks
-			// add check inside loop
-			// move erase down (works)
-			//hexdump(&Address, 2);
+    /* Inline Functions: */
+        bool BootloaderAPI_ReadPage(const address_size_t Address, uint8_t* data)
+        {
+            // Do not read out of bounds
+            if (Address & (SPM_PAGESIZE - 1) || (Address > FLASHEND)) {
+                return true;
+            }
 
-			// Do not write out of bounds TODO FLASHEND
-			if (Address & (SPM_PAGESIZE - 1)) {
-				return true;
-			}
+            for(uint8_t i = 0; i < SPM_PAGESIZE; i++){
+                *data = pgm_read_byte_auto(Address + i);
+                data++;
+            }
 
-			/* Erase the given FLASH page, ready to be programmed */
-			boot_page_erase(Address);
-			boot_spm_busy_wait();
+            return false;
+        }
 
-			/* Write each of the FLASH page's bytes in sequence */
-			uint8_t PageWord;
-			for (PageWord = 0; PageWord < (SPM_PAGESIZE / 2); PageWord++)
-			{
-				/* Write the next data word to the FLASH page */
-				boot_page_fill(Address + ((uint16_t)PageWord << 1), *Words);
-				Words++;
-			}
+        void BootloaderAPI_WriteEEPROM(uint8_t* data, void* Address, uint8_t length)
+        {
+            // Write data (max 8 bit length) and wait for eeprom to finish
+            for(uint8_t i = 0; i < length; i++){
+                eeprom_write_byte(Address + i, *((uint8_t*)data + i));
+            }
+            eeprom_busy_wait();
+        }
 
-			/* Write the filled FLASH page to memory */
-			boot_page_write(Address);
-			boot_spm_busy_wait();
+        void BootloaderAPI_UpdateEEPROM(uint8_t* data, void* Address, uint8_t length)
+        {
+            // Write data (max 8 bit length) and wait for eeprom to finish
+            for(uint8_t i = 0; i < length; i++){
+                eeprom_update_byte(Address + i, *((uint8_t*)(data + i)));
+            }
+            eeprom_busy_wait();
+        }
 
-			/* Re-enable RWW section */
-			boot_rww_enable();
-
-			return false;
-		}
-
-		static inline bool BootloaderAPI_ReadPage(const address_size_t Address, uint8_t* data)
-		{
-			// Do not read out of bounds TODO FLASHEND
-			if (Address & (SPM_PAGESIZE - 1)) {
-				return true;
-			}
-
-			for(uint8_t i = 0; i < SPM_PAGESIZE; i++){
-				*data = pgm_read_byte_auto(Address + i);
-				data++;
-			}
-
-			return false;
-		}
-
-		static inline void BootloaderAPI_WriteEEPROM(uint8_t* data, void* Address, uint8_t length)
-		{
-			// Write data (max 8 bit length) and wait for eeprom to finish
-			for(uint8_t i = 0; i < length; i++){
-				eeprom_write_byte(Address + i, *((uint8_t*)data + i));
-			}
-			eeprom_busy_wait();
-		}
-
-		static inline void BootloaderAPI_UpdateEEPROM(uint8_t* data, void* Address, uint8_t length)
-		{
-			// Write data (max 8 bit length) and wait for eeprom to finish
-			for(uint8_t i = 0; i < length; i++){
-				eeprom_update_byte(Address + i, *((uint8_t*)(data + i)));
-			}
-			eeprom_busy_wait();
-		}
+    /* Disable C linkage for C++ Compilers: */
+        #if defined(__cplusplus)
+            }
+        #endif
 
 #endif

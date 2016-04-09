@@ -27,7 +27,6 @@ LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAG
 # device's fuses.
 FLASH_SIZE_KB			:= 32
 BOOT_SECTION_SIZE_KB	:= 4
-SPM_PAGESIZE			:= 128
 
 # Special optimization (most important at the top)
 # COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
@@ -67,11 +66,10 @@ BOOT_SEC_OFFSET       = $(call CALC_ADDRESS_IN_HEX, ($(FLASH_SIZE_KB) * 1024) - 
 # Bootloader linker section flags for relocating the API table sections to
 # known FLASH addresses - these should not normally be user-edited.
 BOOT_SECTION_LD_FLAG  = -Wl,--section-start=$(strip $(1))=$(call BOOT_SEC_OFFSET, $(3)) -Wl,--undefined=$(strip $(2))
-BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_functions, BootloaderAPI_functions, $(SPM_PAGESIZE))
-BOOT_API_LD_FLAGS     += $(call BOOT_SECTION_LD_FLAG, .apitable_bootloader_key, BootloaderAPI_bootloader_key, 32)
-#BOOT_API_LD_FLAGS     += $(call BOOT_SECTION_LD_FLAG, .apitable_hardware_button, BootloaderAPI_hardware_button, 34)
-#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   34)
-#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  68)
+BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_bootloader_key, BootloaderAPI_bootloader_key, 160)
+BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_functions, BootloaderAPI_functions, 128)
+BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable, BootloaderAPI_JumpTable,   4)
+
 
 # Default target
 all:

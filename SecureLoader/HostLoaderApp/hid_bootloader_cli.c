@@ -188,8 +188,8 @@ int main(int argc, char **argv)
 	}
 
 	printf_verbose("Changing key!\r\n");
-	//r = teensy_write(&CK, sizeof(CK), 6.0);
-	//if (!r) die("error writing to Teensy\n");
+	r = teensy_write(&CK, sizeof(CK), 6.0);
+	if (!r) die("error writing to Teensy\n");
 
 	printf_verbose("Key Changed!\r\n");
 
@@ -244,7 +244,7 @@ int main(int argc, char **argv)
 		ihex_get_data(addr, sizeof(ProgrammFlashPage.PageDataBytes), ProgrammFlashPage.PageDataBytes);
 
 		// Save key and initialization vector inside context
-		aes256CbcMacInit(&ctx, key); // TODO key2
+		aes256CbcMacInit(&ctx, key2); // TODO key2
 
 		// Calculate and save CBC-MAC
 		aes256CbcMacUpdate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));

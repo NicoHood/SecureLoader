@@ -28,60 +28,20 @@
   this software.
 */
 
+
 ; BootloaderPROGMEMKey 32 byte, 256 bit
 .section .apitable_bootloader_key, "ax"
 .global BootloaderAPI_bootloader_key
 BootloaderAPI_bootloader_key:
-
-.byte 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe
-.byte	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81
-.byte	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7
-.byte	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
-
-; useHardwareButton + padding for word alignment
-; TODO change default value
-.section .apitable_hardware_button, "ax"
-.global BootloaderAPI_hardware_button
-BootloaderAPI_hardware_button:
-.byte 0x01
-.byte 0x00
-
-
-; Trampolines to actual API implementations if the target address is outside the
-; range of a rjmp instruction (can happen with large bootloader sections)
-
-BootloaderAPI_Trampolines:
-
-  ;.word 0xAAAA ; Signature for a LUFA class bootloader
-
-	BootloaderAPI_aes256_init_ecb_Trampoline:
-		jmp aes256_init_ecb
-	BootloaderAPI_aes256_encrypt_ecb_Trampoline:
-		jmp aes256_decrypt_ecb
-	BootloaderAPI_aes256_decrypt_ecb_Trampoline:
-		ret
-	BootloaderAPI_UNUSED4:
-		ret
-	BootloaderAPI_UNUSED5:
-		ret
-
+    .byte 0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe
+    .byte	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81
+    .byte	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7
+    .byte	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
 
 
 ; API function jump table
 .section .apitable_jumptable, "ax"
 .global BootloaderAPI_JumpTable
 BootloaderAPI_JumpTable:
-  ;.word 0xAABB ; Signature for a LUFA class bootloader
-	;jmp BootloaderAPI_ErasePage
-	;jmp aes256_decrypt_ecb
-  jmp BootloaderAPI_Test
-  ;.word 0xCCDD ; Signature for a LUFA class bootloader
-
-; Bootloader table signatures and information
-.section .apitable_signatures, "ax"
-.global BootloaderAPI_Signatures
-BootloaderAPI_Signatures:
-
-	.long BOOT_START_ADDR ; Start address of the bootloader
-	.word 0xDF00 ; Signature for the CDC class bootloader
-	.word 0xAABB ; Signature for a LUFA class bootloader
+    rjmp BootloaderAPI_EraseFillWritePage
+    rjmp BootloaderAPI_ReadByte

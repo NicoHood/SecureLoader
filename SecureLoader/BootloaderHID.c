@@ -106,7 +106,7 @@ typedef union
     {
         //uint8_t IV[AES256_CBC_LENGTH];
         uint8_t BootloaderKey[32];
-        uint8_t Mac[AES256_CBC_LENGTH];
+        uint8_t Mac[AES256_CBC_LENGTH]; //TODO cbc Mac
     };
 } changeBootloaderKey_t;
 
@@ -149,13 +149,13 @@ static secureBootloaderSection_t SBS;
 static void readSBS(void)
 {
     // Load PROGMEM data into temporary SBS RAM structure
-    BootloaderAPI_ReadPage(FLASHEND - SPM_PAGESIZE + 1, SBS.raw);
+    BootloaderAPI_ReadPage(FLASHEND - 2 * SPM_PAGESIZE + 1, SBS.raw);
 }
 
 static void writeSBS(void)
 {
     // Write local RAM copy of SBS back to PROGMEM
-    BootloaderAPI_EraseFillWritePage(FLASHEND - SPM_PAGESIZE + 1, SBS.words);
+    BootloaderAPI_EraseFillWritePage(FLASHEND - 2 * SPM_PAGESIZE + 1, SBS.words);
 }
 
 static void initSBS(void) __attribute__ ((used, naked, section (".init5")));
