@@ -48,6 +48,7 @@
 		#include "AES/aes256.h"
 		#include "SERIAL/serial.h"
 		#include "BootloaderAPI.h"
+		#include "Protocol.h"
 
 		#include <USB/USB.h>
 

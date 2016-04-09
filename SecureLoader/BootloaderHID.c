@@ -50,79 +50,10 @@ static volatile uint8_t* MagicBootKeyPtr = (volatile uint8_t *)RAMEND;
 
 static uint8_t CheckButton ATTR_NO_INIT;
 
-
-// Data to programm a flash page that was sent by the host
-typedef union
-{
-    uint8_t raw[0];
-    struct
-    {
-        union
-        {
-            uint16_t PageAddress;
-            uint8_t padding[AES256_CBC_LENGTH];
-        };
-        union
-        {
-            uint16_t PageDataWords[SPM_PAGESIZE/2];
-            uint8_t PageDataBytes[SPM_PAGESIZE];
-        };
-        uint8_t cbcMac[AES256_CBC_LENGTH];
-    };
-} ProgrammFlashPage_t;
-
+// Temporary data for the protocol to work with
 static ProgrammFlashPage_t ProgrammFlashPage;
-
-// Set a flash page address, that can be requested by the host afterwards
-typedef union
-{
-    uint8_t raw[0];
-    struct
-    {
-        uint16_t PageAddress;
-    };
-} SetFlashPage_t;
-
 static SetFlashPage_t SetFlashPage = { .PageAddress = 0xFFFF };
-
-// Data to read a flash page that was requested by the host
-typedef union
-{
-    uint8_t raw[0];
-    struct
-    {
-        uint16_t PageAddress;
-        union
-        {
-            uint16_t PageDataWords[SPM_PAGESIZE/2];
-            uint8_t PageDataBytes[SPM_PAGESIZE];
-        };
-    };
-} ReadFlashPage_t;
-
 static ReadFlashPage_t ReadFlashPage;
-
-// Data to simpler calculate the new Bootloader Key, IV prepended
-typedef union
-{
-    uint8_t raw[0];
-    struct
-    {
-        uint8_t IV[AES256_CBC_LENGTH];
-
-        // Data package from the PC to change the Bootloader Key
-        union
-        {
-            uint8_t raw[0];
-            struct
-            {
-                uint8_t BootloaderKey[32];
-                uint8_t cbcMac[AES256_CBC_LENGTH];
-            };
-        } data;
-    };
-} newBootloaderKey_t;
-
 static newBootloaderKey_t newBootloaderKey = { .IV= {0} };
 
 #ifdef USE_EEPROM_KEY
