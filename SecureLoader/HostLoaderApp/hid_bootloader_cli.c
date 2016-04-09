@@ -316,20 +316,36 @@ int main(int argc, char **argv)
 		r = teensy_write(buf, 2, 0.25);
 		if (!r) die("error writing to Teensy\n");
 
+		// Data to read a flash page that was requested by the host
+		typedef union
+		{
+		    uint8_t raw[0];
+		    struct
+		    {
+		        uint16_t PageAddress;
+		        union
+		        {
+		            uint16_t PageDataWords[SPM_PAGESIZE/2];
+		            uint8_t PageDataBytes[SPM_PAGESIZE];
+		        };
+		    };
+		} ReadFlashPage_t;
+
 		// Get data
-		uint8_t verifybuf[SPM_PAGESIZE];
-		r = teensy_read(verifybuf, sizeof(verifybuf), 3);
+		ReadFlashPage_t verifybuf;
+		r = teensy_read(verifybuf.raw, sizeof(verifybuf), 3);
 		if (!r) die("error reading Teensy\n");
 
-		uint8_t originalbuf[SPM_PAGESIZE];
-		ihex_get_data(addr, sizeof(originalbuf), originalbuf);
+		ReadFlashPage_t originalbuf;
+		originalbuf.PageAddress = (buf[1] << 8) | buf[0];
+		ihex_get_data(addr, sizeof(originalbuf.PageDataBytes), originalbuf.PageDataBytes);
 
 		// Compare the data
-		if(memcmp(verifybuf, originalbuf, sizeof(originalbuf))){
+		if(memcmp(verifybuf.raw, originalbuf.raw, sizeof(originalbuf))){
 			printf_verbose("Expected:\n");
-			hexdump(originalbuf, sizeof(originalbuf));
+			hexdump(originalbuf.raw, sizeof(originalbuf));
 			printf_verbose("Received:\n");
-			hexdump(verifybuf, sizeof(verifybuf));
+			hexdump(verifybuf.raw, sizeof(verifybuf));
 			die("Error Verification mismatch\n");
 		}
 

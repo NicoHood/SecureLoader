@@ -92,7 +92,11 @@ typedef union
     struct
     {
         uint16_t PageAddress;
-        uint16_t PageData[SPM_PAGESIZE/2];
+        union
+        {
+            uint16_t PageDataWords[SPM_PAGESIZE/2];
+            uint8_t PageDataBytes[SPM_PAGESIZE];
+        };
     };
 } ReadFlashPage_t;
 
@@ -459,15 +463,20 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 
         case HID_REQ_GetReport:
         {
-            // Only response to feature request that request a flash page.
-            // Set the page address first via SetReport.
-            if ((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_ITEM_Feature
-                 || length >= sizeof(ReadFlashPage))
+            // Only response to get feature report requests
+            if ((uint8_t)(USB_ControlRequest.wValue >> 8) != HID_REPORT_REQUEST_Feature)
             {
-                // Acknowledge setup data
-                Endpoint_ClearSETUP();
+                return;
+            }
 
-                // Read the source address
+            // Acknowledge setup data
+            Endpoint_ClearSETUP();
+
+            // Process ReadFlashPage request
+            if (length == sizeof(ReadFlashPage))
+            {
+                // Set the page address first via SetReport!
+                // Read the source address.
                 address_size_t PageAddress = getPageAddress(SetFlashPage.PageAddress);
 
                 // Do not overwrite the bootloader or write out of bounds
@@ -478,19 +487,26 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 }
 
                 // Read flash page into temporary buffer
-                BootloaderAPI_ReadPage(SetFlashPage.PageAddress, ReadFlashPage.raw);
+                ReadFlashPage.PageAddress = setPageAddress(SetFlashPage.PageAddress);
+                BootloaderAPI_ReadPage(SetFlashPage.PageAddress, ReadFlashPage.PageDataBytes);
 
                 // Write the page data to the PC
                 Endpoint_Write_Control_Stream_LE(ReadFlashPage.raw, sizeof(ReadFlashPage));
-
-                // Acknowledge GetReport request
-                Endpoint_ClearStatusStageDeviceToHost();
             }
+            // No valid data length found
+            else
+            {
+                Endpoint_StallTransaction();
+                return;
+            }
+
+            // Acknowledge GetReport request
+            Endpoint_ClearStatusStageDeviceToHost();
             break;
         }
         default:
         {
-            Endpoint_StallTransaction();
+            // The class driver will handle the endpoint acknowledge and stall
             return;
         }
     }

@@ -47,10 +47,12 @@
             typedef uint32_t address_size_t;
             #define pgm_read_byte_auto(address) pgm_read_byte_far(address)
             #define getPageAddress(address) ((uint32_t)address << 8)
+            #define setPageAddress(address) ((uint16_t)(address >> 8))
         #else
             typedef uint16_t address_size_t;
             #define pgm_read_byte_auto(address) pgm_read_byte_near(address)
             #define getPageAddress(address) (address)
+            #define setPageAddress(address) (address)
         #endif
 
     /* Function Prototypes: */
