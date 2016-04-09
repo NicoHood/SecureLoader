@@ -25,9 +25,9 @@ LD_FLAGS     = -Wl,--section-start=.text=$(BOOT_START_OFFSET) $(BOOT_API_LD_FLAG
 # Flash size and bootloader section sizes of the target, in KB. These must
 # match the target's total FLASH size and the bootloader size set in the
 # device's fuses.
-FLASH_SIZE_KB        := 32
-BOOT_SECTION_SIZE_KB := 4
-SPM_PAGESIZE				 := 128
+FLASH_SIZE_KB			:= 32
+BOOT_SECTION_SIZE_KB	:= 4
+SPM_PAGESIZE			:= 128
 
 # Special optimization (most important at the top)
 # COMPILER_PATH =../AVR-Development-Environment-Script/bin/bin/
@@ -70,7 +70,7 @@ BOOT_SECTION_LD_FLAG  = -Wl,--section-start=$(strip $(1))=$(call BOOT_SEC_OFFSET
 BOOT_API_LD_FLAGS     = $(call BOOT_SECTION_LD_FLAG, .apitable_functions, BootloaderAPI_functions, $(SPM_PAGESIZE))
 BOOT_API_LD_FLAGS     += $(call BOOT_SECTION_LD_FLAG, .apitable_bootloader_key, BootloaderAPI_bootloader_key, 32)
 #BOOT_API_LD_FLAGS     += $(call BOOT_SECTION_LD_FLAG, .apitable_hardware_button, BootloaderAPI_hardware_button, 34)
-BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   34)
+#BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_jumptable,   BootloaderAPI_JumpTable,   34)
 #BOOT_API_LD_FLAGS    += $(call BOOT_SECTION_LD_FLAG, .apitable_signatures,  BootloaderAPI_Signatures,  68)
 
 # Default target

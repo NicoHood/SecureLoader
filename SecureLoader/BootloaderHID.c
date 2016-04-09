@@ -41,6 +41,16 @@
  */
 static bool RunBootloader = true;
 
+/** Magic lock for forced application start. If the HWBE fuse is programmed and BOOTRST is unprogrammed, the bootloader
+ *  will start if the /HWB line of the AVR is held low and the system is reset. However, if the /HWB line is still held
+ *  low when the application attempts to start via a watchdog reset, the bootloader will re-start. If set to the value
+ *  \ref MAGIC_BOOT_KEY the special init function \ref Application_Jump_Check() will force the application to start.
+ */
+static volatile uint8_t* MagicBootKeyPtr = (volatile uint8_t *)RAMEND;
+
+static uint8_t CheckButton ATTR_NO_INIT;
+
+
 // Data to programm a flash page that was sent by the host
 typedef union
 {
@@ -102,6 +112,7 @@ typedef union
 
 static changeBootloaderKey_t changeBootloaderKey;
 
+#ifdef USE_EEPROM_KEY
 // TODO set proper eeprom address space via makefile
 static uint8_t EEMEM BootloaderKeyEEPROM[32] =
 {
@@ -113,6 +124,8 @@ static uint8_t EEMEM BootloaderKeyEEPROM[32] =
 
 // Bootloader Key (local ram copy)
 static uint8_t BootloaderKeyRam[32];
+
+#else
 
 // Data to change the Bootloader Key
 typedef union
@@ -131,6 +144,8 @@ typedef union
 
 static secureBootloaderSection_t SBS;
 
+#endif
+
 static void readSBS(void)
 {
     // Load PROGMEM data into temporary SBS RAM structure
@@ -146,6 +161,8 @@ static void writeSBS(void)
 static void initSBS(void) __attribute__ ((used, naked, section (".init5")));
 static void initSBS(void)
 {
+    // Load PROGMEM data of SBS into RAM.
+    // This has to be done after .init4 section!
     readSBS();
 }
 
@@ -159,6 +176,12 @@ static aes256CbcMacCtx_t ctx;
 #define DDR_BUTTON                     DDRE
 #define PIN_BUTTON                     PINE
 
+static inline bool ButtonPressed(void)
+{
+    // Check if low
+    return !(PIN_BUTTON & (1 << PORTID_BUTTON));
+}
+
 static inline bool JumpToBootloader(void)
 {
     // TODO check if HW button setting is enabled
@@ -168,8 +191,7 @@ static inline bool JumpToBootloader(void)
     DDR_BUTTON &= ~(1 << PORTID_BUTTON);
     PORT_BUTTON |= (1 << PORTID_BUTTON);
 
-    // Check if low
-    return !(PIN_BUTTON & (1 << PORTID_BUTTON));
+    return ButtonPressed();
 }
 
 /** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
@@ -178,19 +200,33 @@ static inline bool JumpToBootloader(void)
  */
 void Application_Jump_Check(void)
 {
-    // Turn off the watchdog
+    // Turn off the watchdog, save reset source
+    uint8_t mcusr_state = MCUSR;
     MCUSR = 0;
     wdt_disable();
 
-    // Don't run the user application if the reset vector is blank (no app loaded)
-    bool ApplicationValid = (pgm_read_word_near(0) != 0xFFFF);
+    // On a watchdog reset check if the application requested the bootloader
+    uint8_t MagicBootKey = *MagicBootKeyPtr;
+    *MagicBootKeyPtr = 0x00;
+    if ((mcusr_state & (1 << WDRF)) && (MagicBootKey == MAGIC_BOOT_KEY))
+    {
+        return;
+    }
 
-    // Start apllication if available and no button was pressed at startup
-    if (ApplicationValid && !JumpToBootloader())
+    // Start bootloader if hardware button was pressed at startup
+    CheckButton = 0;
+    if(JumpToBootloader())
+    {
+        CheckButton = 1;
+        return;
+    }
+
+    // Don't run the user application if the reset vector is blank
+    bool ApplicationValid = (pgm_read_word_near(0) != 0xFFFF);
+    if (ApplicationValid)
     {
         // Clear RAM
-        uint8_t* p;
-        for (p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++)
+        for (uint8_t* p = (uint8_t*)RAMSTART; p <= (uint8_t*)RAMEND; p++)
         {
             *p = 0x00;
         }
@@ -198,9 +234,6 @@ void Application_Jump_Check(void)
         // Start application
         ((void (*)(void))0x0000)();
     }
-
-    // TODO startup delay
-    // TODO disconnect on error
 }
 
 
@@ -209,6 +242,9 @@ void Application_Jump_Check(void)
  */
 int main(void)
 {
+    // TODO startup delay
+    // TODO disconnect on error
+
     uart_init();
 
     uart_putchars("Start---------------\r\n");
@@ -226,9 +262,30 @@ int main(void)
 #if !defined(INTERRUPT_CONTROL_ENDPOINT)
         USB_Device_ProcessControlRequest();
 #endif
+
+        // Use a timeout if hardware button was used to enter bootloader mode
+        if (CheckButton)
+        {
+            // Wait check approx 2,5 ~ 3 seconds button to exit bootloader
+            if(!ButtonPressed())
+            {
+                CheckButton++;
+                if(!CheckButton)
+                {
+                    RunBootloader = false;
+                }
+                _delay_ms(10);
+            }
+            else
+            {
+                // Reset timer if button is pressed again
+                CheckButton = true;
+            }
+        }
     } while (RunBootloader);
 
-    // Disconnect from the host - USB interface will be reset later along with the AVR
+    // Disconnect from the host.
+    // USB interface will be reset later along with the AVR.
     USB_Detach();
 
     // Enable the watchdog and force a timeout to reset the AVR
@@ -462,5 +519,13 @@ static inline void EVENT_USB_Device_ControlRequest(void)
             }
             break;
         }
+        default:
+        {
+            Endpoint_StallTransaction();
+            return;
+        }
     }
+
+    // No error, valid HID command was used. Stay in bootloader mode.
+    CheckButton = 0;
 }
