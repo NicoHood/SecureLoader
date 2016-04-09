@@ -48,6 +48,7 @@ static bool RunBootloader = true;
  */
 static volatile uint8_t* MagicBootKeyPtr = (volatile uint8_t *)RAMEND;
 
+// TODO description
 static uint8_t CheckButton ATTR_NO_INIT;
 
 // Temporary data for the protocol to work with
@@ -138,8 +139,6 @@ static void initSBS(void)
     // Load PROGMEM data of SBS into RAM.
     // This has to be done after .init4 section!
     readSBS();
-
-    //initAES();
 }
 
 #define PORTID_BUTTON                PORTE6
@@ -153,16 +152,11 @@ static inline bool ButtonPressed(void)
     return !(PIN_BUTTON & (1 << PORTID_BUTTON));
 }
 
-static inline bool JumpToBootloader(void)
+static inline void ButtonSetup(void)
 {
-    // TODO check if HW button setting is enabled
-    // TODO or use a timeout?
-
     // Pressing button starts the bootloader
     DDR_BUTTON &= ~(1 << PORTID_BUTTON);
     PORT_BUTTON |= (1 << PORTID_BUTTON);
-
-    return ButtonPressed();
 }
 
 /** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
@@ -186,7 +180,8 @@ void Application_Jump_Check(void)
 
     // Start bootloader if hardware button was pressed at startup
     CheckButton = 0;
-    if(JumpToBootloader())
+    ButtonSetup();
+    if(ButtonPressed())
     {
         CheckButton = 1;
         return;
