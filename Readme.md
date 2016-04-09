@@ -212,29 +212,91 @@ accepted, but it is not encrypted (open source).
   * Verify the Firmware
   * Start the Firmware
 
-#### 3.1.5 Enter Bootloader Mode
-After device startup the Bootloader normally executes the Firmware. To enter the
-Bootloader Mode you need to manually press a physical button. This ensures that
-you cannot enter the recovery mode automatic from the PC side.
+#### Enter Bootloader Mode
+After device startup the Bootloader normally executes the Firmware. The Firmware
+can request to enter the Bootloader Mode. It has to put a special `uint8_t
+MagicBootloaderKey = 0x77` inside `RAMEND` which is normally reserved by gcc as
+main() return value. After a watchdog reset the Bootloader Mode will be entered.
 
-Firmware upgrades are done less often so the user have to explicitly call the
-Bootloader Mode. A note how to start the recovery mode should be placed inside
-the Firmware manual.
+As 2nd recovery option you can manually enter the Bootloader Mode. You need to
+manually press and hold a physical button while plugging in the device. The
+Bootloader will wait for any command from the PC. If no command was received yet
+and you release the button for more than 3 seconds it will load the Firmware.
+This is meant as a recovery mode if you Firmware does not start at all. A note
+how to start the Bootloader Mode should be placed inside the Firmware manual.
 
-TODO also enter the bootloader mode via watchtog reset as brute force will be disabled with a timeout.
+#### Bootloader Section Overview
+
+The page size of the Atmega23u4 is 128 bytes (64 words), the datasheet is wrong.
+
+```
+    +----------------------------+ 0x0000
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |      User Application      |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    |                            |
+    +----------------------------+ FLASHEND - BOOT_SECTION_SIZE (4KiB)
+    |                            |
+    |   Bootloader Application   |
+    | (Not User App. Accessible) |
+    |                            |
+    +----------------------------+ FLASHEND - 256
+    | Secure Bootloader Section  |
+    |  Bootloader Key (32 byte)  |
+    | (Not User App. Accessible) |
+    +----------------------------+ FLASHEND - 128
+    |  Bootloader API Functions  |
+    |    EraseFillWritePage()    |
+    |         ReadByte()         |
+    |   (User App. Accessible)   |
+    +----------------------------+ FLASHEND - 4
+    | Bootloader API Jump Table: |
+    |  rjmp EraseFillWritePage   |
+    |        rjmp ReadByte       |
+    |   (User App. Accessible)   |
+    +----------------------------+ FLASHEND
+```
+
+#### Secure Bootloader Section (SBS)
+Secrets are stored inside the Secure Bootloader Section:
+* Firmware Upgrade Counter (32bit)
+* Bootloader Key 32 byte, 256 bit
+
+The [penultimate Bootloader flash page](TODO) is used to store the SBS.
+The Bootloaders flash is protected by fuses to safe it from being read via ISP.
+The Firmware has no direct (read/write) access to the data except via the [Bootloader Read/Write API](TODO) to avoid a [Firmware Vulnerability Risk](TODO).
+
+#### Bootloader Read/Write API
+On AVR it is only possible to write new flash pages from the Bootloader Section.
+Also the Bootloader Section is protected from direct read access to avoid a
+[Firmware Vulnerability Risk](TODO).
+
+Therefore the Bootloader contains a special interface with functions to allow
+read/write access of the Bootloader Section. Those functions are placed inside
+a single flash page at the very end of the flash. This flash page also contains
+a jump table in the last 4 flash bytes. It is used to call those two functions:
+* `bool BootloaderAPI_EraseFillWritePage(const address_size_t address,
+                                         const uint16_t* words)`
+* `uint8_t BootloaderAPI_ReadByte(const address_size_t address)`
+
+**The Bootloader Read/Write API should be used with care inside the Firmware.**
+It should only be used to access the Bootloader in a very critical situation.
+It does not protect against accessing the [SBS](TODO) but avoids overwriting itself.
+
 
 ### Additional Features
-
-#### 3.1.3 Bootloader Jump Table (BJT)
-The Bootloader Jump Table is used to reuse functions of the Bootloader from the
-Firmware. This can be used to implement further security functions inside the
-Firmware and don't waste the flash for a reimplementation of AES.
-
-Available Jump Table functions are:
-* AES (dec or enc + init)
-* Write flash page
-
-TODO
 
 #### 3.1.6 Crypto Algorithms
 AES-256 for enc/decrypting
