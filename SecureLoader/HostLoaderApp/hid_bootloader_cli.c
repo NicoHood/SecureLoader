@@ -83,6 +83,19 @@ int verbose = 0;
 int code_size = 0, block_size = 0;
 const char *filename=NULL;
 
+static uint8_t key[32] = {
+	0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
+	0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
+	0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7,
+	0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+};
+
+static uint8_t key2[32] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+};
 
 /****************************************************************/
 /*                                                              */
@@ -110,28 +123,20 @@ int main(int argc, char **argv)
 	// read the intel hex file
 	// this is done first so any error is reported before using USB
 	num = read_intel_hex(filename);
-	if (num < 0) die("error reading intel hex file \"%s\"", filename);
+	if (num < 0) die("Error reading Intel hex file \"%s\"", filename);
 	printf_verbose("Read \"%s\": %d bytes, %.1f%% usage\n",
 		filename, num, (double)num / (double)code_size * 100.0);
 
 	// open the USB device
-	while (1) {
-		if (teensy_open()) break;
-		if (hard_reboot_device) {
-			if (!hard_reboot()) die("Unable to find rebootor\n");
-			printf_verbose("Hard Reboot performed\n");
-			hard_reboot_device = 0; // only hard reboot once
-			wait_for_device_to_appear = 1;
-		}
+	while (!teensy_open()) {
 		if (!wait_for_device_to_appear) die("Unable to open device\n");
 		if (!waited) {
-			printf_verbose("Waiting for Teensy device...\n");
-			printf_verbose(" (hint: press the reset button)\n");
-			waited = 1;
+			printf_verbose("Waiting device...\n");
+			waited = true;
 		}
 		delay(0.25);
 	}
-	printf_verbose("Found HalfKay Bootloader\n");
+	printf_verbose("Found Bootloader\n");
 
 	// if we waited for the device, read the hex file again
 	// perhaps it changed while we were waiting?
@@ -145,31 +150,6 @@ int main(int argc, char **argv)
 	// program the data
 	printf_verbose("Programming\r\n");
 	fflush(stdout);
-
-	static uint8_t key[32] = {
-		0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe,
-		0x2b,	0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
-		0x1f, 0x35, 0x2c, 0x07, 0x3b,	0x61, 0x08, 0xd7,
-		0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
-	};
-
-	static uint8_t key2[32] = {
-		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-	};
-
-	// Data package from the PC to change the Bootloader Key
-	typedef union
-	{
-	    uint8_t raw[0];
-	    struct
-	    {
-	        uint8_t BootloaderKey[32];
-	        uint8_t cbcMac[AES256_CBC_LENGTH];
-	    };
-	} data_t;
 
 	// Data to simpler calculate the new Bootloader Key, IV prepended
 	typedef union
