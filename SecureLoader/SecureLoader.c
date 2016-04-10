@@ -262,13 +262,6 @@ int main(void)
     for (;;);
 }
 
-#if defined(INTERRUPT_CONTROL_ENDPOINT)
-ISR(USB_COM_vect, ISR_BLOCK)
-{
-    USB_Device_ProcessControlRequest();
-}
-#endif
-
 /** Configures all hardware required for the bootloader. */
 static void SetupHardware(void)
 {
