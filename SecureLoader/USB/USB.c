@@ -57,6 +57,7 @@ ISR(USB_GEN_vect, ISR_BLOCK)
 	}
 }
 
+// TODO (re)move
 // #if defined(INTERRUPT_CONTROL_ENDPOINT)
 // #include "DeviceStandardReq.h" 	// USB_Device_ProcessControlRequest
 // ISR(USB_COM_vect, ISR_BLOCK)
