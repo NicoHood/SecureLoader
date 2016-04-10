@@ -25,9 +25,9 @@
 #ifdef BACK_TO_TABLES
 
 #if defined(__AVR__)
-const uint8_t sbox[256] __attribute__ ((__progmem__)) = {		// forward s-box
+const uint8_t sbox[256] __attribute__ ((__progmem__)) = {        // forward s-box
 #else
-const uint8_t sbox[256] = {		// forward s-box
+const uint8_t sbox[256] = {        // forward s-box
 #endif
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5,
     0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,

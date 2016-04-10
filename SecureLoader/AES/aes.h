@@ -54,9 +54,9 @@ void aes256_decrypt_ecb(aes256_context *, uint8_t * /* cipertext */);
 
 #define aes256_ctx_t aes256_context
 
-#define aes256_init(x,y)	aes256_init_ecb((y),(uint8_t*)(x))
-#define aes256_enc(x,y)		aes256_encrypt_ecb((y),(uint8_t*)(x))
-#define aes256_dec(x,y)		aes256_decrypt_ecb((y),(uint8_t*)(x))
+#define aes256_init(x,y)    aes256_init_ecb((y),(uint8_t*)(x))
+#define aes256_enc(x,y)     aes256_encrypt_ecb((y),(uint8_t*)(x))
+#define aes256_dec(x,y)     aes256_decrypt_ecb((y),(uint8_t*)(x))
 
 #ifdef __cplusplus
 }
