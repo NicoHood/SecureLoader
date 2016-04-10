@@ -11,24 +11,28 @@ extern "C" {
 #include <string.h>
 #include "aes.h"
 
+// USEFUL functions
+static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes);
+
+// CBC functions
+static inline void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, const size_t dataLen);
+static inline void aes256CbcDecrypt(aes256_ctx_t *ctx, uint8_t *data, const size_t dataLen) __attribute__((always_inline)); //TODO use?
+
+// CBC-MAC functions
+static inline void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t *data, const size_t dataLen);
+static inline bool aes256CbcMacReverseCompare(aes256_context* ctx, uint8_t* data, const size_t dataLen);
+
 // DEFINES
 #define AES256_CBC_LENGTH     16
 
-// USEFUL functions
-static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes);
-static inline void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen);
-static inline void aes256CbcDecrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen) __attribute__((always_inline)); //TODO use? -> bootloader authentification
-
-
-
-/*!    \fn     void aesXorVectors(uint8_t* dest, uint8_t* src, uint8_t nbytes)
-*    \brief    Do xor between dest and src and save it inside dest
+/*! \fn     void aesXorVectors(uint8_t* dest, uint8_t* src, uint8_t nbytes)
+*   \brief  Do xor between dest and src and save it inside dest
 *
 *   \param  dest - destination of xor
 *   \param  src - source of xor data
 *   \param  nbytes - number of bytes to be xored between dest and src
 */
-static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes)
+void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbytes)
 {
     while (nbytes--)
     {
@@ -38,8 +42,15 @@ static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbyt
     }
 }
 
-
-void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
+/*! \fn     void aes256CbcEncrypt(aes256_ctx_t* ctx, uint8_t* data, size_t dataLen)
+*   \brief  Encrypt data and save it in data.
+*   \note   Reserved space for the IV has to be prepended to the data.
+*
+*   \param  ctx - context
+*   \param  data - pointer to data, starting with the IV, this is also the location to store encrypted data
+*   \param  dataLen - size of data (excluding the IV)
+*/
+void aes256CbcEncrypt(aes256_ctx_t* ctx, uint8_t* data, const size_t dataLen)
 {
     // Check if dataLen is a multiple of AES256_CBC_LENGTH
     if (dataLen % AES256_CBC_LENGTH != 0)
@@ -51,7 +62,7 @@ void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
     memset(data, 0x00, AES256_CBC_LENGTH);
 
     // Encrypt the data
-    for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
+    for (size_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
         // Get next block
         data += AES256_CBC_LENGTH;
@@ -64,12 +75,15 @@ void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
     }
 }
 
-// data points to the IV
-// Assumes IV is prepended!
-// TODO assumed the IV is set to zero
-// Does not touch the IV!
-// dataLen excludes the IV
-void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, uint16_t dataLen)
+/*! \fn     void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, size_t dataLen)
+*   \brief  Decrypt data and save it in data.
+*   \note   Reserved space for the IV has to be prepended to the data.
+*
+*   \param  ctx - context
+*   \param  data - pointer to data, starting with the IV, this is also the location to store decrypted data
+*   \param  dataLen - size of data (excluding the IV)
+*/
+void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, const size_t dataLen)
 {
     // Check if dataLen is a multiple of AES256_CBC_LENGTH
     if (dataLen % AES256_CBC_LENGTH != 0)
@@ -77,14 +91,14 @@ void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, uint16_t dataLen)
         return;
     }
 
-    // Set IV to Zero TODO remove?
+    // Set IV to Zero
     memset(data, 0x00, AES256_CBC_LENGTH);
 
     // Start from the end to not overwrite previous data (skip IV)
     data += dataLen;
 
     // Decrypt the data
-    for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
+    for (size_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
         // Decrypt next block
         aes256_dec(data, ctx);
@@ -97,9 +111,15 @@ void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, uint16_t dataLen)
     }
 }
 
-
-
-static inline void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t *data, const uint16_t dataLen)
+/*! \fn     void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t* data, const size_t dataLen)
+*   \brief  Calculate CBC-MAC and save it at the end of data.
+*   \note   Reserved space for the CBC-MAC has to be appended to the data.
+*
+*   \param  ctx - context
+*   \param  data - pointer to data, this is also the location to store the CBC-MAC at the end
+*   \param  dataLen - size of data (excluding the CBC-MAC)
+*/
+void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t* data, const size_t dataLen)
 {
     // Check if dataLen is a multiple of AES256_CBC_LENGTH
     if (dataLen % AES256_CBC_LENGTH != 0)
@@ -114,7 +134,7 @@ static inline void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t *data, const
     memset(cbcMac, 0x00, AES256_CBC_LENGTH);
 
     // Loop will update cbcMac for each block
-    for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
+    for (size_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
         // XOR cbcMac with data
         aesXorVectors(cbcMac, data + i, AES256_CBC_LENGTH);
@@ -124,11 +144,16 @@ static inline void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t *data, const
     }
 }
 
-//     Compare if CBC-MAC matches with the input data
-// TODO note The input cbcMac will be overwritten for recalculating the IV
-// TODO assume cbc mac is appended to the data
-// TODO For a forward compare just recalculate the CBC-MAC and compare the result
-static inline bool aes256CbcMacReverseCompare(aes256_context *ctx, uint8_t *data, const uint16_t dataLen)
+/*! \fn     void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t* data, const size_t dataLen)
+*   \brief  Reverse calculate CBC-MAC and check if IV matches.
+*   \note   The CBC-MAC has to be appended to the data and will be overwritten with the IV.
+*
+*   \param  ctx - context
+*   \param  data - pointer to data, this is also the location to store the CBC-MAC at the end
+*   \param  dataLen - size of data (excluding the CBC-MAC)
+*   \return CBC-MAC comparison error has occured
+*/
+bool aes256CbcMacReverseCompare(aes256_context* ctx, uint8_t* data, const size_t dataLen)
 {
     // Check if dataLen is a multiple of AES256_CBC_LENGTH
     if (dataLen % AES256_CBC_LENGTH != 0)
@@ -140,7 +165,7 @@ static inline bool aes256CbcMacReverseCompare(aes256_context *ctx, uint8_t *data
     uint8_t* cbcMac = data + dataLen;
 
     // Loop will update cbcMac for each block
-    for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
+    for (size_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
         // Decrypt next block
         aes256_dec(cbcMac, ctx);
