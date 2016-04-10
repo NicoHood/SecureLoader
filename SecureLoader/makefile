@@ -47,8 +47,10 @@ SRC += BootloaderAPITable.S
 AVRDUDE_PORT       = /dev/ttyACM0
 AVRDUDE_PROGRAMMER = stk500v1
 AVRDUDE_FLAGS      = -b 19200
-AVRDUDE_FUSES      = -Ulock:w:0x1C:m -Uefuse:w:0xCB:m -Uhfuse:w:0xD8:m -Ulfuse:w:0xFF:m
-
+AVRDUDE_HFUSE      = 0xD8
+AVRDUDE_EFUSE      = 0xCB
+AVRDUDE_LFUSE      = 0xFF
+AVRDUDE_LOCK       = 0x1C
 
 # Some helpers to get all the .c and .h files.
 # $(TARGET) is included inside $(OBJECTS).
@@ -84,14 +86,14 @@ include $(DMBS_PATH)/hid.mk
 include $(DMBS_PATH)/avrdude.mk
 include $(DMBS_PATH)/atprogram.mk
 
-
-noreboot:
-	cd HostLoaderApp && $(MAKE) && cd ..
-	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v -n ./HostLoaderApp/blink/blink1000.hex
-
-upload:
+cli:
 	cd HostLoaderApp && $(MAKE) clean && $(MAKE) && cd ..
-	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v ./HostLoaderApp/blink/blink1000.hex
 
-uploadfast:
-	./HostLoaderApp/hid_bootloader_cli -mmcu=atmega32u4 -v ./HostLoaderApp/blink/blink100.hex
+noreboot: cli
+	./HostLoaderApp/SecureLoaderCli -v -n -w ./HostLoaderApp/blink/blink100.hex
+
+upload: cli
+	./HostLoaderApp/SecureLoaderCli -v ./HostLoaderApp/blink/blink1000.hex
+
+uploadfast: cli
+	./HostLoaderApp/SecureLoaderCli -v ./HostLoaderApp/blink/blink100.hex
