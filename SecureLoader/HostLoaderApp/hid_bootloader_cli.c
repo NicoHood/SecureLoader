@@ -1,36 +1,9 @@
-/* Modified for the LUFA HID Bootloader by Dean Camera
- *           http://www.lufa-lib.org
- *
- *   THIS MODIFIED VERSION IS UNSUPPORTED BY PJRC.
- */
 
-/* Teensy Loader, Command Line Interface
- * Program and Reboot Teensy Board with HalfKay Bootloader
- * http://www.pjrc.com/teensy/loader_cli.html
- * Copyright 2008-2010, PJRC.COM, LLC
- *
- *
- * You may redistribute this program and/or modify it under the terms
- * of the GNU General Public License as published by the Free Software
- * Foundation, version 3 of the License.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see http://www.gnu.org/licenses/
- */
-
-/* Want to incorporate this code into a proprietary application??
- * Just email paul@pjrc.com to ask.  Usually it's not a problem,
- * but you do need to ask to use this code in any way other than
- * those permitted by the GNU General Public License, version 3  */
-
-/* For non-root permissions on ubuntu or similar udev-based linux
- * http://www.pjrc.com/teensy/49-teensy.rules
- */
+#define SPM_PAGESIZE 128
+#define VENDOR_ID 0x7777
+#define PRODUCT_ID 0x7777
+#define CODE_SIZE (32 * 1024)
+#define BOOTLOADER_SIZE (4 * 1024)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,31 +12,20 @@
 #include <string.h>
 #include <unistd.h>
 #include "../AES/aes256.h"
-#define SPM_PAGESIZE 128
 #include "../Protocol.h"
 
-void usage(void)
-{
-    fprintf(stderr, "Usage: hid_bootloader_cli -mmcu=<MCU> [-w] [-h] [-n] [-v] <file.hex>\n");
-    fprintf(stderr, "\t-w : Wait for device to appear\n");
-    fprintf(stderr, "\t-r : Use hard reboot if device not online\n");
-    fprintf(stderr, "\t-n : No reboot after programming\n");
-    fprintf(stderr, "\t-v : Verbose output\n");
-    fprintf(stderr, "\n<MCU> = atmegaXXuY or at90usbXXXY");
-
-    fprintf(stderr, "\nFor support and more information, please visit:\n");
-    fprintf(stderr, "http://www.lufa-lib.org\n");
-
-    fprintf(stderr, "\nBased on the TeensyHID command line programmer software:\n");
-    fprintf(stderr, "http://www.pjrc.com/teensy/loader_cli.html\n");
-    exit(1);
-}
+// Bootloader API
+void writeData(uint8_t* signkey);
+void changeKey(uint8_t* oldkey, uint8_t* newkey);
+void verifyData(void);
 
 // USB Access Functions
-int teensy_open(void);
-int teensy_write(void *buf, int len, double timeout);
-void teensy_close(void);
-int hard_reboot(void);
+void SecureLoader_init(void);
+void SecureLoader_exit(void);
+int SecureLoader_open(void);
+int SecureLoader_write(void *buf, int len, double timeout);
+int SecureLoader_read(void *buf, int len, double timeout);
+void SecureLoader_close(void);
 
 // Intel Hex File Functions
 int read_intel_hex(const char *filename);
@@ -72,6 +34,7 @@ void ihex_get_data(int addr, int len, unsigned char *bytes);
 
 // Misc stuff
 int printf_verbose(const char *format, ...);
+int printf_high_verbose(const char *format, ...);
 void hexdump(uint8_t * data, size_t len);
 void delay(double seconds);
 void die(const char *str, ...);
@@ -79,11 +42,10 @@ void parse_options(int argc, char **argv);
 
 // options (from user via command line args)
 int wait_for_device_to_appear = 0;
-int hard_reboot_device = 0;
 int reboot_after_programming = 1;
 int verbose = 0;
-int code_size = 0, block_size = 0;
 const char *filename=NULL;
+
 
 // AES
 aes256_ctx_t ctx;
@@ -102,6 +64,18 @@ static uint8_t key2[32] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 };
 
+void usage(void)
+{
+    fprintf(stderr, "Usage: hid_bootloader_cli [-w] [-h] [-n] [-v] <file.hex>\n");
+    fprintf(stderr, "\t-w  : Wait for device to appear\n");
+    fprintf(stderr, "\t-n  : No reboot after programming\n");
+    fprintf(stderr, "\t-v  : Verbose output\n");
+    fprintf(stderr, "\t-vv : High verbose output\n");
+    SecureLoader_exit();
+    exit(1);
+}
+
+
 /****************************************************************/
 /*                                                              */
 /*                       Main Program                           */
@@ -110,8 +84,10 @@ static uint8_t key2[32] = {
 
 int main(int argc, char **argv)
 {
-    unsigned char buf[260 + AES256_CBC_LENGTH + AES256_CBC_LENGTH - 2];
-    int num, addr, r, first_block=1, waited=0;
+    int num, waited=0;
+
+    // Init USB context
+    SecureLoader_init();
 
     // parse command line arguments
     parse_options(argc, argv);
@@ -119,24 +95,20 @@ int main(int argc, char **argv)
         fprintf(stderr, "Filename must be specified\n\n");
         usage();
     }
-    if (!code_size) {
-        fprintf(stderr, "MCU type must be specified\n\n");
-        usage();
-    }
-    printf_verbose("Teensy Loader, Command Line, Version 2.0\n");
+    printf_verbose("SecureLoader Loader, Command Line, Version 1.0\n");
 
-    // read the intel hex file
-    // this is done first so any error is reported before using USB
+    // Read the intel hex file
+    // This is done first so any error is reported before using USB
     num = read_intel_hex(filename);
     if (num < 0) die("Error reading Intel hex file \"%s\"", filename);
     printf_verbose("Read \"%s\": %d bytes, %.1f%% usage\n",
-        filename, num, (double)num / (double)code_size * 100.0);
+        filename, num, (double)num / (double)CODE_SIZE * 100.0);
 
-    // open the USB device
-    while (!teensy_open()) {
+    // Open the USB device
+    while (!SecureLoader_open()) {
         if (!wait_for_device_to_appear) die("Unable to open device\n");
         if (!waited) {
-            printf_verbose("Waiting device...\n");
+            printf_verbose("Waiting for device...\n");
             waited = true;
         }
         delay(0.25);
@@ -149,119 +121,133 @@ int main(int argc, char **argv)
         num = read_intel_hex(filename);
         if (num < 0) die("Error reading intel hex file \"%s\"", filename);
         printf_verbose("Read \"%s\": %d bytes, %.1f%% usage\n",
-             filename, num, (double)num / (double)code_size * 100.0);
+             filename, num, (double)num / (double)CODE_SIZE * 100.0);
     }
 
-    // program the data
-    printf_verbose("Programming\r\n");
     fflush(stdout);
 
     // TODO verify via authentification package?
+    changeKey(key, key2);
+    writeData(key2);
+    verifyData();
 
-    newBootloaderKey_t newBootloaderKey;
+    // reboot to the user's new code
+    if (reboot_after_programming) {
+        printf_verbose("Booting\n");
+        SetFlashPage_t SetFlashPage = { .PageAddress = COMMAND_STARTAPPLICATION };
+        SecureLoader_write(SetFlashPage.raw, sizeof(SetFlashPage), 1);
+    }
+    SecureLoader_close();
+    SecureLoader_exit();
+    return 0;
+}
 
-    // Get the data ready
-    memset(newBootloaderKey.IV, 0x00, sizeof(newBootloaderKey.IV));
-    memcpy(newBootloaderKey.data.BootloaderKey, key2, sizeof(newBootloaderKey.data.BootloaderKey));
-
-    // Calculate and save CBC-MAC
-    aes256_init(key, &ctx);
-
-    // Encrypt the data
-    uint16_t dataLen = sizeof(newBootloaderKey.data.BootloaderKey);
-    aes256CbcEncrypt(&ctx, newBootloaderKey.IV, dataLen);
-
-    // Calculate and save CBC-MAC
-    aes256CbcMacCalculate(&ctx, newBootloaderKey.data.raw, sizeof(newBootloaderKey.data.BootloaderKey));
-
-    // Write data to the AVR
-    printf_verbose("Changing key!\r\n");
-    r = teensy_write(&newBootloaderKey.data, sizeof(newBootloaderKey.data), 6.0);
-    if (!r) die("Error writing to Teensy\n");
-    printf_verbose("Key Changed!\r\n");
-
-    for (addr = 0; addr < code_size; addr += block_size) {
-        printf_verbose("\n%d", addr);
-        if (addr > 0 && !ihex_bytes_within_range(addr, addr + block_size - 1)) {
+void writeData(uint8_t* signkey)
+{
+    printf_verbose("Programming\n");
+    for (int addr = 0; addr < CODE_SIZE; addr += SPM_PAGESIZE) {
+        printf_high_verbose("\n%d", addr);
+        if (addr > 0 && !ihex_bytes_within_range(addr, addr + SPM_PAGESIZE - 1)) {
             // don't waste time on blocks that are unused,
             // but always do the first one to erase the chip
-            printf_verbose(" Empty block!");
+            printf_high_verbose(" Empty Block!");
             continue;
         }
-        if(addr >= code_size - 4*1024){
-            printf_verbose(" Skipping BootLoader Section!");
+        if(addr >= (CODE_SIZE - BOOTLOADER_SIZE)){
+            printf_verbose("Warning: Skipping BootLoader Section!");
             continue;
         }
 
-        //printf_verbose(".");
-        if (code_size < 0x10000) {
-            buf[0] = addr & 255;
-            buf[1] = (addr >> 8) & 255;
-        } else {
-            buf[0] = (addr >> 8) & 255;
-            buf[1] = (addr >> 16) & 255;
+        if(verbose == 1){
+            printf_verbose(".");
+        }
+
+        // Special case for large flash MCUs
+        if (CODE_SIZE > 0xFFFF)
+        {
+            addr >>= 8;
         }
 
         // Create a new flash page data structure
         ProgrammFlashPage_t ProgrammFlashPage;
-
-        // Fill padding and CBC-MAC with zeros TODO padding overwrites the addres!
-        // TODO you could also fill the whole struct with zeros instead
-        memset(ProgrammFlashPage.padding, 0x00, sizeof(ProgrammFlashPage.padding));
-        memset(ProgrammFlashPage.cbcMac, 0x00, sizeof(ProgrammFlashPage.cbcMac)); //TODO done in cbc mac function
 
         // Load the actual flash page address and data
         ProgrammFlashPage.PageAddress = addr;
         ihex_get_data(addr, sizeof(ProgrammFlashPage.PageDataBytes), ProgrammFlashPage.PageDataBytes);
 
         // Save key and initialization vector inside context
-        aes256_init(key2, &ctx);
+        aes256_init(signkey, &ctx);
 
         // Calculate and save CBC-MAC
         aes256CbcMacCalculate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));
 
-        // Write data to the board
-        //hexdump(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage));
-        r = teensy_write(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage), 9.0);
-        if (!r) die("error writing to Teensy\n");
-        first_block = 0;
+        // Write data to the AVR
+        int r = SecureLoader_write(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage), 1.0);
+        if (!r) die("Error writing to SecureLoader\n");
     }
     printf_verbose("\n");
+}
 
-    printf_verbose("Verify\r\n");
-    for (addr = 0; addr < code_size; addr += block_size) {
-        if (addr > 0 && !ihex_bytes_within_range(addr, addr + block_size - 1)) {
+void changeKey(uint8_t* oldkey, uint8_t* newkey)
+{
+    printf_verbose("Changing key\n");
+
+    // Get the data ready
+    newBootloaderKey_t newBootloaderKey;
+    memcpy(newBootloaderKey.data.BootloaderKey, newkey, sizeof(newBootloaderKey.data.BootloaderKey));
+
+    // Initialize key schedule inside CTX
+    aes256_init(oldkey, &ctx);
+
+    // Encrypt the data
+    aes256CbcEncrypt(&ctx, newBootloaderKey.IV, sizeof(newBootloaderKey.data.BootloaderKey));
+
+    // Calculate and save CBC-MAC
+    aes256CbcMacCalculate(&ctx, newBootloaderKey.data.raw, sizeof(newBootloaderKey.data.BootloaderKey));
+
+    // Write data to the AVR
+    int r = SecureLoader_write(&newBootloaderKey.data, sizeof(newBootloaderKey.data), 6.0);
+    if (!r) die("Error writing to SecureLoader\n");
+}
+
+void verifyData(void)
+{
+    printf_verbose("Verifing\n");
+    for (int addr = 0; addr < CODE_SIZE; addr += SPM_PAGESIZE) {
+        printf_high_verbose("\n%d", addr);
+        if (addr > 0 && !ihex_bytes_within_range(addr, addr + SPM_PAGESIZE - 1)) {
             // don't waste time on blocks that are unused,
             // but always do the first one to erase the chip
-            //printf_verbose(" Empty block!");
+            printf_high_verbose(" Empty Block!");
             continue;
         }
-        if(addr >= code_size - 4*1024){
-            //printf_verbose(" Skipping BootLoader Section!");
+        if(addr >= (CODE_SIZE - BOOTLOADER_SIZE)){
+            printf_verbose("Warning: Skipping BootLoader Section!");
             continue;
         }
-        printf_verbose("%d\r\n", addr);
 
-        //printf_verbose(".");
-        if (code_size < 0x10000) {
-            buf[0] = addr & 255;
-            buf[1] = (addr >> 8) & 255;
-        } else {
-            buf[0] = (addr >> 8) & 255;
-            buf[1] = (addr >> 16) & 255;
+        if(verbose == 1){
+            printf_verbose(".");
+        }
+
+        // Special case for large flash MCUs
+        if (CODE_SIZE > 0xFFFF)
+        {
+            addr >>= 8;
         }
 
         // Request page
-        r = teensy_write(buf, 2, 0.25);
-        if (!r) die("error writing to Teensy\n");
+        SetFlashPage_t SetFlashPage = { .PageAddress = addr};
+        int r = SecureLoader_write(SetFlashPage.raw, sizeof(SetFlashPage), 1);
+        if (!r) die("Error writing to SecureLoader\n");
 
-        // Get data
+        // Get data from AVR
         ReadFlashPage_t verifybuf;
-        r = teensy_read(verifybuf.raw, sizeof(verifybuf), 3);
-        if (!r) die("error reading Teensy\n");
+        r = SecureLoader_read(verifybuf.raw, sizeof(verifybuf), 1);
+        if (!r) die("Error reading SecureLoader\n");
 
-        ReadFlashPage_t originalbuf;
-        originalbuf.PageAddress = (buf[1] << 8) | buf[0];
+        // Get hex file data
+        ReadFlashPage_t originalbuf = { .PageAddress = addr};
         ihex_get_data(addr, sizeof(originalbuf.PageDataBytes), originalbuf.PageDataBytes);
 
         // Compare the data
@@ -270,22 +256,11 @@ int main(int argc, char **argv)
             hexdump(originalbuf.raw, sizeof(originalbuf));
             printf_verbose("Received:\n");
             hexdump(verifybuf.raw, sizeof(verifybuf));
-            die("Error Verification mismatch\n");
+            die("Error verification mismatch\n");
         }
     }
-
-    // reboot to the user's new code
-    if (reboot_after_programming) {
-        printf_verbose("Booting\r\n");
-		SetFlashPage_t SetFlashPage;
-		SetFlashPage.PageAddress = COMMAND_STARTAPPLICATION;
-        teensy_write(SetFlashPage.raw, sizeof(SetFlashPage), 1);
-    }
-    teensy_close();
-    return 0;
+    printf_verbose("\n");
 }
-
-
 
 
 /****************************************************************/
@@ -353,56 +328,38 @@ usb_dev_handle * open_usb_device(int vid, int pid)
     return NULL;
 }
 
-static usb_dev_handle *libusb_teensy_handle = NULL;
+static usb_dev_handle *libusb_SecureLoader_handle = NULL;
 
-int teensy_open(void)
+int SecureLoader_open(void)
 {
-    teensy_close();
-    libusb_teensy_handle = open_usb_device(0x16C0, 0x0478);
+    SecureLoader_close();
+    libusb_SecureLoader_handle = open_usb_device(VENDOR_ID, PRODUCT_ID);
 
-    if (!libusb_teensy_handle)
-        libusb_teensy_handle = open_usb_device(0x03eb, 0x2067);
+    if (!libusb_SecureLoader_handle)
+        libusb_SecureLoader_handle = open_usb_device(0x03eb, 0x2067);
 
-    if (!libusb_teensy_handle) return 0;
+    if (!libusb_SecureLoader_handle) return 0;
     return 1;
 }
 
-int teensy_write(void *buf, int len, double timeout)
+int SecureLoader_write(void *buf, int len, double timeout)
 {
     int r;
 
-    if (!libusb_teensy_handle) return 0;
+    if (!libusb_SecureLoader_handle) return 0;
     // 0x0100 out, 0x0200 feature
-    r = usb_control_msg(libusb_teensy_handle, 0x21, 9, 0x0200, 0, (char *)buf,
+    r = usb_control_msg(libusb_SecureLoader_handle, 0x21, 9, 0x0200, 0, (char *)buf,
         len, (int)(timeout * 1000.0));
     if (r < 0) return 0;
     return 1;
 }
 
-void teensy_close(void)
+void SecureLoader_close(void)
 {
-    if (!libusb_teensy_handle) return;
-    usb_release_interface(libusb_teensy_handle, 0);
-    usb_close(libusb_teensy_handle);
-    libusb_teensy_handle = NULL;
-}
-
-int hard_reboot(void)
-{
-    usb_dev_handle *rebootor;
-    int r;
-
-    rebootor = open_usb_device(0x16C0, 0x0477);
-
-    if (!rebootor)
-        rebootor = open_usb_device(0x03eb, 0x2067);
-
-    if (!rebootor) return 0;
-    r = usb_control_msg(rebootor, 0x21, 9, 0x0200, 0, "reboot", 6, 100);
-    usb_release_interface(rebootor, 0);
-    usb_close(rebootor);
-    if (r < 0) return 0;
-    return 1;
+    if (!libusb_SecureLoader_handle) return;
+    usb_release_interface(libusb_SecureLoader_handle, 0);
+    usb_close(libusb_SecureLoader_handle);
+    libusb_SecureLoader_handle = NULL;
 }
 
 #endif
@@ -415,10 +372,19 @@ int hard_reboot(void)
 
 static hid_device* hidapi_device = NULL;
 
-int teensy_open(void)
+void SecureLoader_init(void)
 {
     hid_init();
-    hidapi_device = hid_open(0x16C0, 0x0478, NULL);
+}
+
+void SecureLoader_exit(void)
+{
+    hid_exit();
+}
+
+int SecureLoader_open(void)
+{
+    hidapi_device = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
 
     if(!hidapi_device){
         hidapi_device = hid_open(0x03eb, 0x2067, NULL);
@@ -428,7 +394,7 @@ int teensy_open(void)
     return 1;
 }
 
-int teensy_write(void *buf, int len, double timeout)
+int SecureLoader_write(void *buf, int len, double timeout)
 {
     if (!hidapi_device) return 0;
 
@@ -444,7 +410,7 @@ int teensy_write(void *buf, int len, double timeout)
     return 1;
 }
 
-int teensy_read(void *buf, int len)
+int SecureLoader_read(void *buf, int len, double timeout)
 {
     if (!hidapi_device) return 0;
 
@@ -459,21 +425,11 @@ int teensy_read(void *buf, int len)
     return 1;
 }
 
-void teensy_close(void)
+void SecureLoader_close(void)
 {
     if (!hidapi_device) return;
     hid_close (hidapi_device);
     hidapi_device = NULL;
-    hid_exit();
-}
-
-int hard_reboot(void)
-{
-    if (!teensy_open()) return 0;
-    int r = teensy_write("reboot", 6, 1);
-    teensy_close();
-    if (r < 0) return 0;
-    return 1;
 }
 
 #endif
@@ -576,49 +532,33 @@ int write_usb_device(HANDLE h, void *buf, int len, int timeout)
     return 1;
 }
 
-static HANDLE win32_teensy_handle = NULL;
+static HANDLE win32_SecureLoader_handle = NULL;
 
-int teensy_open(void)
+int SecureLoader_open(void)
 {
-    teensy_close();
-    win32_teensy_handle = open_usb_device(0x16C0, 0x0478);
+    SecureLoader_close();
+    win32_SecureLoader_handle = open_usb_device(VENDOR_ID, PRODUCT_ID);
 
-    if (!win32_teensy_handle)
-        win32_teensy_handle = open_usb_device(0x03eb, 0x2067);
+    if (!win32_SecureLoader_handle)
+        win32_SecureLoader_handle = open_usb_device(0x03eb, 0x2067);
 
-    if (!win32_teensy_handle) return 0;
+    if (!win32_SecureLoader_handle) return 0;
     return 1;
 }
 
-int teensy_write(void *buf, int len, double timeout)
+int SecureLoader_write(void *buf, int len, double timeout)
 {
     int r;
-    if (!win32_teensy_handle) return 0;
-    r = write_usb_device(win32_teensy_handle, buf, len, (int)(timeout * 1000.0));
+    if (!win32_SecureLoader_handle) return 0;
+    r = write_usb_device(win32_SecureLoader_handle, buf, len, (int)(timeout * 1000.0));
     return r;
 }
 
-void teensy_close(void)
+void SecureLoader_close(void)
 {
-    if (!win32_teensy_handle) return;
-    CloseHandle(win32_teensy_handle);
-    win32_teensy_handle = NULL;
-}
-
-int hard_reboot(void)
-{
-    HANDLE rebootor;
-    int r;
-
-    rebootor = open_usb_device(0x16C0, 0x0477);
-
-    if (!rebootor)
-        rebootor = open_usb_device(0x03eb, 0x2067);
-
-    if (!rebootor) return 0;
-    r = write_usb_device(rebootor, "reboot", 6, 100);
-    CloseHandle(rebootor);
-    return r;
+    if (!win32_SecureLoader_handle) return;
+    CloseHandle(win32_SecureLoader_handle);
+    win32_SecureLoader_handle = NULL;
 }
 
 #endif
@@ -761,21 +701,21 @@ void close_usb_device(IOHIDDeviceRef dev)
     }
 }
 
-static IOHIDDeviceRef iokit_teensy_reference = NULL;
+static IOHIDDeviceRef iokit_SecureLoader_reference = NULL;
 
-int teensy_open(void)
+int SecureLoader_open(void)
 {
-    teensy_close();
-    iokit_teensy_reference = open_usb_device(0x16C0, 0x0478);
+    SecureLoader_close();
+    iokit_SecureLoader_reference = open_usb_device(VENDOR_ID, PRODUCT_ID);
 
-    if (!iokit_teensy_reference)
-        iokit_teensy_reference = open_usb_device(0x03eb, 0x2067);
+    if (!iokit_SecureLoader_reference)
+        iokit_SecureLoader_reference = open_usb_device(0x03eb, 0x2067);
 
-    if (!iokit_teensy_reference) return 0;
+    if (!iokit_SecureLoader_reference) return 0;
     return 1;
 }
 
-int teensy_write(void *buf, int len, double timeout)
+int SecureLoader_write(void *buf, int len, double timeout)
 {
     IOReturn ret;
 
@@ -783,36 +723,18 @@ int teensy_write(void *buf, int len, double timeout)
     // IOHIDDeviceSetReportWithCallback is not implemented
     // even though Apple documents it with a code example!
     // submitted to Apple on 22-sep-2009, problem ID 7245050
-    if (!iokit_teensy_reference) return 0;
-    ret = IOHIDDeviceSetReport(iokit_teensy_reference,
+    if (!iokit_SecureLoader_reference) return 0;
+    ret = IOHIDDeviceSetReport(iokit_SecureLoader_reference,
         kIOHIDReportTypeOutput, 0, buf, len);
     if (ret == kIOReturnSuccess) return 1;
     return 0;
 }
 
-void teensy_close(void)
+void SecureLoader_close(void)
 {
-    if (!iokit_teensy_reference) return;
-    close_usb_device(iokit_teensy_reference);
-    iokit_teensy_reference = NULL;
-}
-
-int hard_reboot(void)
-{
-    IOHIDDeviceRef rebootor;
-    IOReturn ret;
-
-    rebootor = open_usb_device(0x16C0, 0x0477);
-
-    if (!rebootor)
-        rebootor = open_usb_device(0x03eb, 0x2067);
-
-    if (!rebootor) return 0;
-    ret = IOHIDDeviceSetReport(rebootor,
-        kIOHIDReportTypeOutput, 0, (uint8_t *)("reboot"), 6);
-    close_usb_device(rebootor);
-    if (ret == kIOReturnSuccess) return 1;
-    return 0;
+    if (!iokit_SecureLoader_reference) return;
+    close_usb_device(iokit_SecureLoader_reference);
+    iokit_SecureLoader_reference = NULL;
 }
 
 #endif
@@ -867,6 +789,7 @@ int open_usb_device(int vid, int pid)
               " USB_GET_DEVICEINFO, please upgrade!\n");
             close(fd);
             closedir(dir);
+            SecureLoader_exit();
             exit(1);
         }
         //printf("%s: v=%d, p=%d\n", buf, info.udi_vendorNo, info.udi_productNo);
@@ -880,53 +803,36 @@ int open_usb_device(int vid, int pid)
     return -1;
 }
 
-static int uhid_teensy_fd = -1;
+static int uhid_SecureLoader_fd = -1;
 
-int teensy_open(void)
+int SecureLoader_open(void)
 {
-    teensy_close();
-    uhid_teensy_fd = open_usb_device(0x16C0, 0x0478);
+    SecureLoader_close();
+    uhid_SecureLoader_fd = open_usb_device(VENDOR_ID, PRODUCT_ID);
 
-    if (uhid_teensy_fd < 0)
-        uhid_teensy_fd = open_usb_device(0x03eb, 0x2067);
+    if (uhid_SecureLoader_fd < 0)
+        uhid_SecureLoader_fd = open_usb_device(0x03eb, 0x2067);
 
-    if (uhid_teensy_fd < 0) return 0;
+    if (uhid_SecureLoader_fd < 0) return 0;
     return 1;
 }
 
-int teensy_write(void *buf, int len, double timeout)
+int SecureLoader_write(void *buf, int len, double timeout)
 {
     int r;
 
     // TODO: implement timeout... how??
-    r = write(uhid_teensy_fd, buf, len);
+    r = write(uhid_SecureLoader_fd, buf, len);
     if (r == len) return 1;
     return 0;
 }
 
-void teensy_close(void)
+void SecureLoader_close(void)
 {
-    if (uhid_teensy_fd >= 0) {
-        close(uhid_teensy_fd);
-        uhid_teensy_fd = -1;
+    if (uhid_SecureLoader_fd >= 0) {
+        close(uhid_SecureLoader_fd);
+        uhid_SecureLoader_fd = -1;
     }
-}
-
-int hard_reboot(void)
-{
-    int r, rebootor_fd;
-
-    rebootor_fd = open_usb_device(0x16C0, 0x0477);
-
-    if (rebootor_fd < 0)
-        rebootor_fd = open_usb_device(0x03eb, 0x2067);
-
-    if (rebootor_fd < 0) return 0;
-    r = write(rebootor_fd, "reboot", 6);
-    delay(0.1);
-    close(rebootor_fd);
-    if (r == 6) return 1;
-    return 0;
 }
 
 #endif
@@ -1114,6 +1020,21 @@ int printf_verbose(const char *format, ...)
     return r;
 }
 
+int printf_high_verbose(const char *format, ...)
+{
+    va_list ap;
+    int r = 0;
+
+    va_start(ap, format);
+    if (verbose > 1) {
+        r = vprintf(format, ap);
+        fflush(stdout);
+    }
+    va_end(ap);
+
+    return r;
+}
+
 void hexdump(uint8_t * data, size_t len)
 {
     size_t i;
@@ -1144,6 +1065,8 @@ void die(const char *str, ...)
     fprintf(stderr, "\n");
     va_end(ap);
 
+    SecureLoader_exit();
+
     exit(1);
 }
 
@@ -1162,41 +1085,12 @@ void parse_options(int argc, char **argv)
         if (*arg == '-') {
             if (strcmp(arg, "-w") == 0) {
                 wait_for_device_to_appear = 1;
-            } else if (strcmp(arg, "-r") == 0) {
-                hard_reboot_device = 1;
             } else if (strcmp(arg, "-n") == 0) {
                 reboot_after_programming = 0;
             } else if (strcmp(arg, "-v") == 0) {
                 verbose = 1;
-            } else if (strncmp(arg, "-mmcu=", 6) == 0) {
-                arg += 6;
-
-                if (strncmp(arg, "at90usb", 7) == 0) {
-                    arg += 7;
-                } else if (strncmp(arg, "atmega", 6) == 0) {
-                    arg += 6;
-                } else {
-                    die("Unknown MCU type\n");
-                }
-
-                if (strncmp(arg, "128", 3) == 0) {
-                    code_size  = 128 * 1024;
-                    block_size = 256;
-                } else if (strncmp(arg, "64", 2) == 0) {
-                    code_size  = 64 * 1024;
-                    block_size = 256;
-                } else if (strncmp(arg, "32", 2) == 0) {
-                    code_size  = 32 * 1024;
-                    block_size = 128;
-                } else if (strncmp(arg, "16", 2) == 0) {
-                    code_size  = 16 * 1024;
-                    block_size = 128;
-                } else if (strncmp(arg, "8", 1) == 0) {
-                    code_size  = 8 * 1024;
-                    block_size = 128;
-                } else {
-                    die("Unknown MCU type\n");
-                }
+            } else if (strcmp(arg, "-vv") == 0) {
+                    verbose = 2;
             }
         } else {
             filename = argv[i];
