@@ -16,7 +16,7 @@ static inline void aesXorVectors(uint8_t *dest, const uint8_t *src, uint8_t nbyt
 
 // CBC functions
 static inline void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, const size_t dataLen);
-static inline void aes256CbcDecrypt(aes256_ctx_t *ctx, uint8_t *data, const size_t dataLen) __attribute__((always_inline)); //TODO use?
+static inline void aes256CbcDecrypt(aes256_ctx_t *ctx, uint8_t *data, const size_t dataLen);
 
 // CBC-MAC functions
 static inline void aes256CbcMacCalculate(aes256_ctx_t* ctx, uint8_t *data, const size_t dataLen);

@@ -45,7 +45,7 @@
         #include <stdbool.h>
         #include <avr/eeprom.h>
 
-        #include "AES/aes256.h"
+        #include "AES/aes256_cbc.h"
         #include "SERIAL/serial.h"
         #include "BootloaderAPI.h"
         #include "Protocol.h"

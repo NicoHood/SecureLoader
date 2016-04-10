@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
-#include "../AES/aes256.h"
+#include "../AES/aes256_cbc.h"
 #include "../Protocol.h"
 
 // Bootloader API
