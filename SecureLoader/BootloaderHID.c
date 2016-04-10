@@ -56,6 +56,7 @@ static ProgrammFlashPage_t ProgrammFlashPage;
 static SetFlashPage_t SetFlashPage = { .PageAddress = 0xFFFF };
 static ReadFlashPage_t ReadFlashPage;
 static newBootloaderKey_t newBootloaderKey = { .IV= {0} };
+static authenticateBootloader_t authenticateBootloader = { .IV= {0} };
 
 #ifdef USE_EEPROM_KEY
 // TODO set proper eeprom address space via makefile
@@ -375,6 +376,24 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 // Reinitialize AES with the new key
                 initAES();
             }
+            // Process authenticateBootloader command
+            else if (length == sizeof(authenticateBootloader.data))
+            {
+                // Read in the data
+                Endpoint_Read_Control_Stream_LE(authenticateBootloader.data.raw, sizeof(authenticateBootloader.data));
+
+                // Abort if CBC-MAC does not match
+                uint16_t dataLen = sizeof(authenticateBootloader.data.challenge);
+                if (aes256CbcMacReverseCompare(&ctx, authenticateBootloader.data.challenge, dataLen))
+                {
+                    Endpoint_StallTransaction();
+                    return;
+                }
+
+                // Decrypt challenge.
+                // Wait for the host to request the challenge answer via get feature report.
+                aes256CbcDecrypt(&ctx, authenticateBootloader.IV, dataLen);
+            }
             // No valid data length found
             else
             {
@@ -418,6 +437,12 @@ static inline void EVENT_USB_Device_ControlRequest(void)
 
                 // Write the page data to the PC
                 Endpoint_Write_Control_Stream_LE(ReadFlashPage.raw, sizeof(ReadFlashPage));
+            }
+            // Process authenticateBootloader request
+            else if (length == sizeof(authenticateBootloader.data.challenge))
+            {
+                // Write the decrypted challenge to the PC
+                Endpoint_Write_Control_Stream_LE(authenticateBootloader.data.challenge, sizeof(authenticateBootloader.data.challenge));
             }
             // No valid data length found
             else

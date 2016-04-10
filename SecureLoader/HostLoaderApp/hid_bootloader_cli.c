@@ -15,6 +15,7 @@
 #include "../Protocol.h"
 
 // Bootloader API
+void authenticate(uint8_t* signkey);
 void writeData(uint8_t* signkey);
 void changeKey(uint8_t* oldkey, uint8_t* newkey);
 void verifyData(void);
@@ -127,9 +128,17 @@ int main(int argc, char **argv)
     fflush(stdout);
 
     // TODO verify via authentification package?
+    authenticate(key);
     changeKey(key, key2);
+    authenticate(key2);
     writeData(key2);
     verifyData();
+
+    authenticate(key2);
+    writeData(key2);
+    verifyData();
+    changeKey(key2, key);
+    authenticate(key);
 
     // reboot to the user's new code
     if (reboot_after_programming) {
@@ -140,6 +149,50 @@ int main(int argc, char **argv)
     SecureLoader_close();
     SecureLoader_exit();
     return 0;
+}
+
+void authenticate(uint8_t* signkey)
+{
+    printf_verbose("Authenticating Secureloader\n");
+
+    // Get the data ready
+    authenticateBootloader_t authenticateBootloader;
+    uint8_t challenge[AES256_CBC_LENGTH];
+    for(int i = 0; i < sizeof(challenge); i++){
+        challenge[i] = rand();
+    }
+    if(verbose > 1)
+    {
+        printf_high_verbose("Seed:\n");
+        hexdump(challenge, sizeof(challenge));
+    }
+    memcpy(authenticateBootloader.data.challenge, challenge, sizeof(authenticateBootloader.data.challenge));
+
+    // Initialize key schedule inside CTX
+    aes256_init(signkey, &ctx);
+
+    // Encrypt the data
+    aes256CbcEncrypt(&ctx, authenticateBootloader.IV, sizeof(authenticateBootloader.data.challenge));
+
+    // Calculate and save CBC-MAC
+    aes256CbcMacCalculate(&ctx, authenticateBootloader.data.raw, sizeof(authenticateBootloader.data.challenge));
+
+    // Write data to the AVR
+    int r = SecureLoader_write(authenticateBootloader.data.raw, sizeof(authenticateBootloader.data), 1);
+    if (!r) die("Error writing to SecureLoader\n");
+
+    // Get data from AVR
+    r = SecureLoader_read(authenticateBootloader.data.challenge, sizeof(authenticateBootloader.data.challenge), 1);
+    if (!r) die("Error reading SecureLoader\n");
+
+    // Compare the data
+    if(memcmp(authenticateBootloader.data.challenge, challenge, sizeof(challenge))){
+        printf_verbose("Expected:\n");
+        hexdump(challenge, sizeof(challenge));
+        printf_verbose("Received:\n");
+        hexdump(authenticateBootloader.data.challenge, sizeof(authenticateBootloader.data.challenge));
+        die("Error authentification mismatch\n");
+    }
 }
 
 void writeData(uint8_t* signkey)
@@ -182,7 +235,7 @@ void writeData(uint8_t* signkey)
         aes256CbcMacCalculate(&ctx, ProgrammFlashPage.raw, sizeof(ProgrammFlashPage.PageDataBytes) + sizeof(ProgrammFlashPage.padding));
 
         // Write data to the AVR
-        int r = SecureLoader_write(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage), 1.0);
+        int r = SecureLoader_write(ProgrammFlashPage.raw, sizeof(ProgrammFlashPage), 1);
         if (!r) die("Error writing to SecureLoader\n");
     }
     printf_verbose("\n");
@@ -206,7 +259,7 @@ void changeKey(uint8_t* oldkey, uint8_t* newkey)
     aes256CbcMacCalculate(&ctx, newBootloaderKey.data.raw, sizeof(newBootloaderKey.data.BootloaderKey));
 
     // Write data to the AVR
-    int r = SecureLoader_write(&newBootloaderKey.data, sizeof(newBootloaderKey.data), 6.0);
+    int r = SecureLoader_write(newBootloaderKey.data.raw, sizeof(newBootloaderKey.data), 1);
     if (!r) die("Error writing to SecureLoader\n");
 }
 
