@@ -257,7 +257,6 @@
 
 #if !defined(CONTROL_ONLY_DEVICE)
                 /* Setup HID Report Endpoint */
-                Endpoint_SelectEndpoint(HID_IN_EPADDR & ENDPOINT_EPNUM_MASK);
                 Endpoint_ConfigureEndpoint(HID_IN_EPADDR, EP_TYPE_INTERRUPT, HID_IN_EPSIZE, 1);
 #endif
             }

@@ -567,6 +567,12 @@
 						const uint8_t UECFG0XData = ((Type << EPTYPE0) | ((Address & ENDPOINT_DIR_IN) ? (1 << EPDIR) : 0));
 						const uint8_t UECFG1XData = ((1 << ALLOC) | ((Banks > 1) ? (1 << EPBK0) : 0) | Endpoint_BytesToEPSizeMask(Size));
 
+						uint8_t Number = (Address & ENDPOINT_EPNUM_MASK);
+
+						if (Number >= ENDPOINT_TOTAL_ENDPOINTS)
+						  return;
+
+						Endpoint_SelectEndpoint(Number);
 						Endpoint_EnableEndpoint();
 
 						UECFG1X = 0;
