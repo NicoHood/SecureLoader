@@ -212,13 +212,13 @@ int main(void)
     // TODO disconnect on error
 
 
-
-    uart_init();
-
-    uart_putchars("Start---------------\r\n");
-    hexdump(SBS.raw, sizeof(SBS));
-
-
+    //
+    //uart_init();
+    //
+    // uart_putchars("Start---------------\r\n");
+    // hexdump(SBS.raw, sizeof(SBS));
+    //
+    //
 
 
     /* Setup hardware required for the bootloader */

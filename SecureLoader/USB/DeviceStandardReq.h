@@ -168,7 +168,7 @@
                 const void* DescriptorAddress = NULL;
                 uint16_t    DescriptorSize = NO_DESCRIPTOR;
 
-                  const uint8_t DescriptorType   = (USB_ControlRequest.wValue >> 8);
+                const uint8_t DescriptorType   = (USB_ControlRequest.wValue >> 8);
                 const uint8_t DescriptorNumber = (USB_ControlRequest.wValue & 0xFF);
 
                 // If/Else chain compiles slightly smaller than a switch case
@@ -295,17 +295,20 @@
                 uint8_t* RequestHeader = (uint8_t*)&USB_ControlRequest;
 
                 for (uint8_t RequestHeaderByte = 0; RequestHeaderByte < sizeof(USB_Request_Header_t); RequestHeaderByte++)
-                  *(RequestHeader++) = Endpoint_Read_8();
+                {
+                    *(RequestHeader++) = Endpoint_Read_8();
+                }
 
-              uint8_t bmRequestType = USB_ControlRequest.bmRequestType;
+                uint8_t bmRequestType = USB_ControlRequest.bmRequestType;
 
-              // Ignore any requests that aren't directed to the HID interface
+                // Ignore any requests that aren't directed to the HID interface
                 // HostToDevice or DeviceToHost is unimportant as we use Set/GetReport
                 if ((bmRequestType & (CONTROL_REQTYPE_TYPE | CONTROL_REQTYPE_RECIPIENT)) ==
-                    (REQTYPE_CLASS | REQREC_INTERFACE))    {
+                    (REQTYPE_CLASS | REQREC_INTERFACE))
+                {
                     EVENT_USB_Device_ControlRequest();
                 }
-              else
+                else
                 {
                     switch (USB_ControlRequest.bRequest)
                     {
@@ -344,7 +347,6 @@
                         case REQ_GetConfiguration:
                             if (bmRequestType == (REQDIR_DEVICETOHOST | REQTYPE_STANDARD | REQREC_DEVICE))
                             {
-                                // TODO doesnt seem to be essential
                               USB_Device_GetConfiguration();
                             }
                             break;
@@ -364,7 +366,7 @@
                 // Select control endpoint again
                 Endpoint_SelectEndpoint(ENDPOINT_CONTROLEP);
 
-                // TODO simpler call stall
+                // Not processed packages will result in an error
                 if (Endpoint_IsSETUPReceived())
                 {
                     Endpoint_ClearSETUP();

@@ -28,6 +28,10 @@
   this software.
 */
 
+.section .apitable_sbs, "ax"
+.global BootloaderAPI_sbs
+BootloaderAPI_sbs:
+.byte 0x00
 
 ; BootloaderPROGMEMKey 32 byte, 256 bit
 .section .apitable_bootloader_key, "ax"

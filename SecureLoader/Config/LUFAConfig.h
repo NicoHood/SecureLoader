@@ -42,11 +42,10 @@
 #ifndef _LUFA_CONFIG_H_
 #define _LUFA_CONFIG_H_
 
-		/* USB Device Mode Driver Related Tokens: */
-
-		#define FIXED_NUM_CONFIGURATIONS        1
-		#define FIXED_NUM_ENDPOINTS							1 // Excluding EP0
-//		#define CONTROL_ONLY_DEVICE //TODO
-//		#define INTERRUPT_CONTROL_ENDPOINT
+        /* USB Device Mode Driver Related Tokens: */
+        #define FIXED_NUM_CONFIGURATIONS	1
+        #define FIXED_NUM_ENDPOINTS         1 // Excluding EP0
+//        #define CONTROL_ONLY_DEVICE
+//        #define INTERRUPT_CONTROL_ENDPOINT
 
 #endif
