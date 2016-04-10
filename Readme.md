@@ -6,6 +6,8 @@ The Bootloader **protects against potential backdoors and malicious Firmware
 upgrades**. This paper describes use cases, features, potential attacks and
 solutions to prevent them.
 
+# Out of data. Readme needs to be updated.
+
 This Readme describes a **temporary concept** with some ideas.
 It is **not final**. Contributions appreciated.
 
