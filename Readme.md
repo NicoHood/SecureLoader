@@ -270,11 +270,7 @@ The page size of the Atmega23u4 is 128 bytes (64 words), the datasheet is wrong.
 ```
 
 #### Secure Bootloader Section (SBS)
-Secrets are stored inside the Secure Bootloader Section:
-* Firmware Upgrade Counter (32bit)
-* Bootloader Key 32 byte, 256 bit
-
-The [penultimate Bootloader flash page](TODO) is used to store the SBS.
+The [penultimate Bootloader flash page](TODO) is used to store the secret BK.
 The Bootloaders flash is protected by fuses to safe it from being read via ISP.
 The Firmware has no direct (read/write) access to the data except via the [Bootloader Read/Write API](TODO) to avoid a [Firmware Vulnerability Risk](TODO).
 
