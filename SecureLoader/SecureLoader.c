@@ -209,17 +209,8 @@ void Application_Jump_Check(void)
  */
 int main(void)
 {
-    // TODO startup delay
-    // TODO disconnect on error
-
-
-    //
-    uart_init();
-    //
-    // uart_putchars("Start---------------\r\n");
-    // hexdump(SBS.raw, sizeof(SBS));
-    //
-    //
+    // Startup delay to avoid brute force
+    _delay_ms(1000);
 
 
     /* Setup hardware required for the bootloader */
@@ -338,6 +329,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 uint16_t dataLen = sizeof(ProgrammFlashPage) - sizeof(ProgrammFlashPage.cbcMac);
                 if (aes256CbcMacReverseCompare(&ctx, ProgrammFlashPage.raw, dataLen))
                 {
+                    RunBootloader = false;
                     Endpoint_StallTransaction();
                     return;
                 }
@@ -355,6 +347,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 uint16_t dataLen = sizeof(newBootloaderKey.data.BootloaderKey);
                 if (aes256CbcMacReverseCompare(&ctx, newBootloaderKey.data.BootloaderKey, dataLen))
                 {
+                    RunBootloader = false;
                     Endpoint_StallTransaction();
                     return;
                 }
@@ -386,6 +379,7 @@ static inline void EVENT_USB_Device_ControlRequest(void)
                 uint16_t dataLen = sizeof(authenticateBootloader.data.challenge);
                 if (aes256CbcMacReverseCompare(&ctx, authenticateBootloader.data.challenge, dataLen))
                 {
+                    RunBootloader = false;
                     Endpoint_StallTransaction();
                     return;
                 }
