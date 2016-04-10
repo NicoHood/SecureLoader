@@ -47,17 +47,20 @@ void aes256CbcEncrypt(aes256_ctx_t *ctx, uint8_t *data, uint16_t dataLen)
         return;
     }
 
+    // Set IV to Zero
+    memset(data, 0x00, AES256_CBC_LENGTH);
+
     // Encrypt the data
     for (uint16_t i = 0; i < dataLen; i += AES256_CBC_LENGTH)
     {
+        // Get next block
+        data += AES256_CBC_LENGTH;
+
         // XOR plaintext with previous data (assuming the IV is prepended!)
         aesXorVectors(data, data - AES256_CBC_LENGTH, AES256_CBC_LENGTH);
 
         // Encrypt next block
         aes256_enc(data, ctx);
-
-        // Get next block
-        data += AES256_CBC_LENGTH;
     }
 }
 
@@ -73,6 +76,9 @@ void aes256CbcDecrypt(aes256_ctx_t* ctx, uint8_t* data, uint16_t dataLen)
     {
         return;
     }
+
+    // Set IV to Zero TODO remove?
+    memset(data, 0x00, AES256_CBC_LENGTH);
 
     // Start from the end to not overwrite previous data (skip IV)
     data += dataLen;
