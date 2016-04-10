@@ -77,6 +77,19 @@
 		/** Size in bytes of the HID reporting IN endpoint. */
 		#define HID_IN_EPSIZE                64
 
+	/* Type Defines: */
+		/** Enum for the device string descriptor IDs within the device. Each string descriptor should
+		 *  have a unique ID index associated with it, which can be used to refer to the string from
+		 *  other descriptors.
+		 */
+		enum StringDescriptors_t
+		{
+			STRING_ID_Language     = 0, /**< Supported Languages string descriptor ID (must be zero) */
+			STRING_ID_Manufacturer = 1, /**< Manufacturer string ID */
+			STRING_ID_Product      = 2, /**< Product string ID */
+			STRING_ID_Serial       = 3, /**< Serial string ID */
+		};
+
 		/** HID class report descriptor. This is a special descriptor constructed with values from the
 		 *  USBIF HID class specification to describe the reports and capabilities of the HID device. This
 		 *  descriptor is parsed by the host and its contents used to determine what data (and in what encoding)
@@ -119,9 +132,9 @@
 			.ProductID              = PRODUCTID,
 			.ReleaseNumber          = VERSION_BCD(0,0,1),
 
-			.ManufacturerStrIndex   = NO_DESCRIPTOR, //TODO add
-			.ProductStrIndex        = NO_DESCRIPTOR,
-			.SerialNumStrIndex      = NO_DESCRIPTOR,
+			.ManufacturerStrIndex   = STRING_ID_Manufacturer,
+			.ProductStrIndex        = STRING_ID_Product,
+			.SerialNumStrIndex      = STRING_ID_Serial,
 
 			.NumberOfConfigurations = FIXED_NUM_CONFIGURATIONS
 		};
@@ -185,6 +198,30 @@
 					.PollingIntervalMS      = 0x05
 				},
 		};
+
+		/** Language descriptor structure. This descriptor, located in SRAM memory, is returned when the host requests
+		 *  the string descriptor with index 0 (the first index). It is actually an array of 16-bit integers, which indicate
+		 *  via the language ID table available at USB.org what languages the device supports for its string descriptors.
+		 */
+		static const USB_Descriptor_String_t LanguageString = USB_STRING_DESCRIPTOR_ARRAY(LANGUAGE_ID_ENG);
+
+		/** Manufacturer descriptor string. This is a Unicode string containing the manufacturer's details in human readable
+		 *  form, and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
+		 *  Descriptor.
+		 */
+		static const USB_Descriptor_String_t ManufacturerString = USB_STRING_DESCRIPTOR(L"NicoHood");
+
+		/** Product descriptor string. This is a Unicode string containing the product's details in human readable form,
+		 *  and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
+		 *  Descriptor.
+		 */
+		static const USB_Descriptor_String_t ProductString = USB_STRING_DESCRIPTOR(L"SecureLoader");
+
+		/** Serial descriptor string. This is a Unicode string containing the product's details in human readable form,
+		 *  and is read out upon request by the host when the appropriate string ID is requested, listed in the Device
+		 *  Descriptor.
+		 */
+		static const USB_Descriptor_String_t SerialString = USB_STRING_DESCRIPTOR(L"0123456789");
 
 	/* Disable C linkage for C++ Compilers: */
 		#if defined(__cplusplus)

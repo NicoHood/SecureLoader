@@ -168,9 +168,10 @@
 				const void* DescriptorAddress = NULL;
 				uint16_t    DescriptorSize = NO_DESCRIPTOR;
 
-			  const uint8_t DescriptorType   = (USB_ControlRequest.wValue >> 8);
+			  	const uint8_t DescriptorType   = (USB_ControlRequest.wValue >> 8);
+				const uint8_t DescriptorNumber = (USB_ControlRequest.wValue & 0xFF);
 
-				/* If/Else chain compiles slightly smaller than a switch case */
+				// If/Else chain compiles slightly smaller than a switch case
 				if (DescriptorType == DTYPE_Device)
 				{
 					DescriptorAddress = &DeviceDescriptor;
@@ -186,12 +187,39 @@
 					DescriptorAddress = &ConfigurationDescriptor.HID_VendorHID;
 					DescriptorSize    = sizeof(USB_HID_Descriptor_HID_t);
 				}
-				// TODO vendor and product strings? TODO internal string
-			  // TODO why defaulting, what about returning?
-				else
+				else if (DescriptorType == HID_DTYPE_Report)
 				{
 					DescriptorAddress = &HIDReport;
 					DescriptorSize    = sizeof(HIDReport);
+				}
+				else if (DescriptorType == DTYPE_String)
+				{
+					if (DescriptorNumber == STRING_ID_Language)
+					{
+						DescriptorAddress = &LanguageString;
+						DescriptorSize    = LanguageString.Header.Size;
+					}
+					else if (DescriptorNumber == STRING_ID_Manufacturer)
+					{
+						DescriptorAddress = &ManufacturerString;
+						DescriptorSize    = ManufacturerString.Header.Size;
+					}
+					else if (DescriptorNumber == STRING_ID_Product)
+					{
+						DescriptorAddress = &ProductString;
+						DescriptorSize    = ProductString.Header.Size;
+					}
+					else if (DescriptorNumber == STRING_ID_Serial)
+					{
+						DescriptorAddress = &SerialString;
+						DescriptorSize    = SerialString.Header.Size;
+					}
+				}
+
+				// Abort if no suitable descriptor was found
+				if (DescriptorSize == NO_DESCRIPTOR)
+				{
+					return;
 				}
 
 				Endpoint_ClearSETUP();
