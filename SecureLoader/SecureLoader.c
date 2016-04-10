@@ -246,6 +246,9 @@ int main(void)
         }
     } while (RunBootloader);
 
+    // Wait a short time to end all USB transactions and then disconnect
+    _delay_us(1000);
+
     // Disconnect from the host.
     // USB interface will be reset later along with the AVR.
     USB_Detach();

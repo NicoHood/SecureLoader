@@ -144,7 +144,8 @@ int main(int argc, char **argv)
     if (reboot_after_programming) {
         printf_verbose("Booting\n");
         SetFlashPage_t SetFlashPage = { .PageAddress = COMMAND_STARTAPPLICATION };
-        SecureLoader_write(SetFlashPage.raw, sizeof(SetFlashPage), 1);
+        int r = SecureLoader_write(SetFlashPage.raw, sizeof(SetFlashPage), 1);
+        if (!r) die("Error writing to SecureLoader\n");
     }
     SecureLoader_close();
     SecureLoader_exit();
