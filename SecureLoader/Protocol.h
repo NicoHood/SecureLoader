@@ -14,6 +14,9 @@ extern "C" {
 #error Please define SPM_PAGESIZE before you include this file!
 #endif
 
+// Bootloader special address to start the user application
+#define COMMAND_STARTAPPLICATION   0xFFFF
+
 // Data to programm a flash page that was sent by the host
 typedef union
 {

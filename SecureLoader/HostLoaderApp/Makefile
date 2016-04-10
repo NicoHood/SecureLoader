@@ -8,7 +8,7 @@ CC ?= gcc
 CFLAGS ?= -O2 -Wall
 hid_bootloader_cli: hid_bootloader_cli.c
 	#$(CC) $(CFLAGS) -s -DUSE_LIBUSB -o hid_bootloader_cli hid_bootloader_cli.c ../AES/aes.c -lusb
-	$(CC) $(CFLAGS) -s -DUSE_HIDAPI -o hid_bootloader_cli hid_bootloader_cli.c ../AES/aes.c -lusb -I/usr/include/hidapi/ -lhidapi-libusb
+	$(CC) $(CFLAGS) -s -DUSE_HIDAPI -o hid_bootloader_cli hid_bootloader_cli.c ../AES/aes.c -I/usr/include/hidapi/ -lhidapi-libusb
 
 
 else ifeq ($(OS), WINDOWS)

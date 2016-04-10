@@ -58,9 +58,6 @@
 		#endif
 
 	/* Macros: */
-		/** Bootloader special address to start the user application */
-		#define COMMAND_STARTAPPLICATION   0xFFFF
-
 		/** Magic bootloader key to unlock forced application start mode. */
 		#define MAGIC_BOOT_KEY             0x77
 

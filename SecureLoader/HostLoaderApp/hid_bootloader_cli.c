@@ -84,6 +84,8 @@ int reboot_after_programming = 1;
 int verbose = 0;
 int code_size = 0, block_size = 0;
 const char *filename=NULL;
+
+// AES
 aes256_ctx_t ctx;
 
 static uint8_t key[32] = {
@@ -167,7 +169,7 @@ int main(int argc, char **argv)
 
     // Encrypt the data
     uint16_t dataLen = sizeof(newBootloaderKey.data.BootloaderKey);
-    aes256CbcEncrypt(&ctx, newBootloaderKey.data.BootloaderKey, dataLen);
+    aes256CbcEncrypt(&ctx, newBootloaderKey.IV, dataLen);
 
     // Calculate and save CBC-MAC
     aes256CbcMacCalculate(&ctx, newBootloaderKey.data.raw, sizeof(newBootloaderKey.data.BootloaderKey));
@@ -270,18 +272,14 @@ int main(int argc, char **argv)
             hexdump(verifybuf.raw, sizeof(verifybuf));
             die("Error Verification mismatch\n");
         }
-
-        // TODO read
     }
 
     // reboot to the user's new code
     if (reboot_after_programming) {
         printf_verbose("Booting\r\n");
-        buf[0] = 0xFF;
-        buf[1] = 0xFF;
-        memset(buf + 2, 0, sizeof(buf) - 2);
-        //teensy_write(buf, block_size + AES256_CBC_LENGTH + AES256_CBC_LENGTH, 0.25);
-        teensy_write(buf, 2, 0.25);
+		SetFlashPage_t SetFlashPage;
+		SetFlashPage.PageAddress = COMMAND_STARTAPPLICATION;
+        teensy_write(SetFlashPage.raw, sizeof(SetFlashPage), 1);
     }
     teensy_close();
     return 0;
@@ -471,8 +469,11 @@ void teensy_close(void)
 
 int hard_reboot(void)
 {
-    // TODO not implemented
-    return 0;
+    if (!teensy_open()) return 0;
+    int r = teensy_write("reboot", 6, 1);
+    teensy_close();
+    if (r < 0) return 0;
+    return 1;
 }
 
 #endif
