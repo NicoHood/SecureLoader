@@ -93,7 +93,7 @@ noreboot: cli
 	./HostLoaderApp/SecureLoaderCli -v -n -w ./HostLoaderApp/blink/blink100.hex
 
 upload: cli
-	./HostLoaderApp/SecureLoaderCli -v ./HostLoaderApp/blink/blink1000.hex
+	./HostLoaderApp/SecureLoaderCli -v -w ./HostLoaderApp/blink/blink1000.hex
 
 uploadfast: cli
-	./HostLoaderApp/SecureLoaderCli -v ./HostLoaderApp/blink/blink100.hex
+	./HostLoaderApp/SecureLoaderCli -v -w ./HostLoaderApp/blink/blink100.hex

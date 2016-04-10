@@ -48,7 +48,10 @@ static bool RunBootloader = true;
  */
 static volatile uint8_t* MagicBootKeyPtr = (volatile uint8_t *)RAMEND;
 
-// TODO description
+/** CheckButton is used to determine if the hardware button was used to enter
+ *  Bootloader Mode. If yes, the Bootloader will autoexit after 3 seconds if
+ *  no valid HID Request from the PC was sent.
+ */
 static uint8_t CheckButton ATTR_NO_INIT;
 
 // Temporary data for the protocol to work with
@@ -72,6 +75,8 @@ static uint8_t EEMEM BootloaderKeyEEPROM[32] =
 static uint8_t BootloaderKeyRam[32];
 
 #else
+
+// TODO move SBS into BootloaderAPI
 
 // Data to change the Bootloader Key
 typedef union
@@ -160,9 +165,7 @@ static inline void ButtonSetup(void)
     PORT_BUTTON |= (1 << PORTID_BUTTON);
 }
 
-/** Special startup routine to check if the bootloader was started via a watchdog reset, and if the magic application
- *    start key has been loaded into \ref MagicBootKey. If the bootloader started via the watchdog and the key is valid,
- *    this will force the user application to start via a software jump.
+/** Special startup routine to check if the bootloader should be started
  */
 void Application_Jump_Check(void)
 {
@@ -204,19 +207,19 @@ void Application_Jump_Check(void)
 }
 
 
-/** Main program entry point. This routine configures the hardware required by the bootloader, then continuously
- *    runs the bootloader processing routine until instructed to soft-exit.
+/** Main program entry point. This routine configures the hardware required
+ *  by the bootloader, then continuously runs the bootloader processing routine
+ *  until instructed to soft-exit.
  */
 int main(void)
 {
     // Startup delay to avoid brute force
     _delay_ms(1000);
 
-
-    /* Setup hardware required for the bootloader */
+    // Setup hardware required for the bootloader
     SetupHardware();
 
-    /* Enable global interrupts so that the USB stack can function */
+    // Enable global interrupts so that the USB stack can function
     GlobalInterruptEnable();
 
     // Process USB data

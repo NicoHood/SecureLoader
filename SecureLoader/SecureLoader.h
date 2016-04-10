@@ -36,38 +36,38 @@
 #ifndef _BOOTLOADERHID_H_
 #define _BOOTLOADERHID_H_
 
-	/* Includes: */
-		#include <avr/io.h>
-		#include <avr/wdt.h>
-		#include <avr/boot.h>
-		#include <avr/power.h>
-		#include <avr/interrupt.h>
-		#include <stdbool.h>
-		#include <avr/eeprom.h>
+    /* Includes: */
+        #include <avr/io.h>
+        #include <avr/wdt.h>
+        #include <avr/boot.h>
+        #include <avr/power.h>
+        #include <avr/interrupt.h>
+        #include <stdbool.h>
+        #include <avr/eeprom.h>
 
-		#include "AES/aes256.h"
-		#include "SERIAL/serial.h"
-		#include "BootloaderAPI.h"
-		#include "Protocol.h"
+        #include "AES/aes256.h"
+        #include "SERIAL/serial.h"
+        #include "BootloaderAPI.h"
+        #include "Protocol.h"
 
-		#include <USB/USB.h>
+        #include <USB/USB.h>
 
-	/* Preprocessor Checks: */
-		#if !defined(__OPTIMIZE_SIZE__)
-			#error This bootloader requires that it be optimized for size, not speed, to fit into the target device. Change optimization settings and try again.
-		#endif
+    /* Preprocessor Checks: */
+        #if !defined(__OPTIMIZE_SIZE__)
+            #error This bootloader requires that it be optimized for size, not speed, to fit into the target device. Change optimization settings and try again.
+        #endif
 
-	/* Macros: */
-		/** Magic bootloader key to unlock forced application start mode. */
-		#define MAGIC_BOOT_KEY             0x77
+    /* Macros: */
+        /** Magic bootloader key to unlock forced application start mode. */
+        #define MAGIC_BOOT_KEY	0x77
 
-	/* Function Prototypes: */
-		static void SetupHardware(void);
+    /* Function Prototypes: */
+        static void SetupHardware(void);
 
-		void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
+        void Application_Jump_Check(void) ATTR_INIT_SECTION(3);
 
-		void EVENT_USB_Device_ConfigurationChanged(void);
-		void EVENT_USB_Device_ControlRequest2(void);
-	  void USB_Device_ProcessControlRequestInline(void);
+        void EVENT_USB_Device_ConfigurationChanged(void);
+        void EVENT_USB_Device_ControlRequest2(void);
+        void USB_Device_ProcessControlRequestInline(void);
 
 #endif
