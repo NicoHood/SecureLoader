@@ -16,7 +16,7 @@ ARCH         = AVR8
 F_CPU        = 16000000
 F_USB        = $(F_CPU)
 OPTIMIZATION = s
-TARGET       = BootloaderHID
+TARGET       = SecureLoader
 SRC          = $(TARGET).c BootloaderAPI.c $(LIBOBJS) $(LUFA_SRC_USB)
 DMBS_PATH    = ../dmbs/DMBS
 CC_FLAGS     = $(OPTIONS) -DUSE_LUFA_CONFIG_HEADER -IConfig/ -DBOOT_START_ADDR=$(BOOT_START_OFFSET)

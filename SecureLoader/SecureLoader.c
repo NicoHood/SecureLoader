@@ -33,7 +33,7 @@
  *    Main source file for the HID class bootloader. This file contains the complete bootloader logic.
  */
 
-#include "BootloaderHID.h"
+#include "SecureLoader.h"
 
 /** Flag to indicate if the bootloader should be running, or should exit and allow the application code to run
  *    via a soft reset. When cleared, the bootloader will abort, the USB interface will shut down and the application
@@ -214,7 +214,7 @@ int main(void)
 
 
     //
-    //uart_init();
+    uart_init();
     //
     // uart_putchars("Start---------------\r\n");
     // hexdump(SBS.raw, sizeof(SBS));
